@@ -7,6 +7,7 @@ import {
   nowUtcStr,
   getTodayDateStr,
   validatePhoneNumber,
+  validateCryptoWalletFormat,
   verifyTransactionOnChain
 } from './helpers.js';
 
@@ -247,9 +248,31 @@ export async function handleAdminRoutes({ sql, method, path, url, body, user }) 
   }
 
   if (method === 'PUT' && path === '/api/admin/settings') {
+    if (body.trc20_address !== undefined) {
+      const cleanTrc20 = String(body.trc20_address || '').trim();
+      if (!validateCryptoWalletFormat(cleanTrc20, 'TRC20')) {
+        return {
+          status: 400,
+          json: { error: 'عنوان محفظة TRC20 غير صحيح — يجب أن يبدأ بحرف T ويتكون من 34 محرفاً' }
+        };
+      }
+      body.trc20_address = cleanTrc20;
+    }
+    if (body.bep20_address !== undefined) {
+      const cleanBep20 = String(body.bep20_address || '').trim();
+      if (!validateCryptoWalletFormat(cleanBep20, 'BEP20')) {
+        return {
+          status: 400,
+          json: { error: 'عنوان محفظة BEP20 غير صحيح — يجب أن يبدأ بـ 0x ويتكون من 42 محرفاً' }
+        };
+      }
+      body.bep20_address = cleanBep20;
+    }
+
     const allowedKeys = [
       'trc20_address', 'bep20_address', 'auto_approve_deposits', 'auto_approve_withdrawals',
-      'blockchain_auto_approve_verified', 'min_deposit', 'min_withdraw', 'daily_withdraw_limit',
+      'blockchain_auto_approve_verified', 'strict_blockchain_txid', 'txid_max_age_hours',
+      'min_deposit', 'min_withdraw', 'daily_withdraw_limit',
       'withdraw_fee_percent', 'guarantee_duration_days', 'whatsapp_number', 'live_ticker_enabled',
       'wheel_min_deposit', 'wheel_referrer_spin', 'salary_system_enabled', 'salary_require_approval'
     ];

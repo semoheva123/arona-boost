@@ -9,6 +9,7 @@ import {
   validatePhoneNumber,
   makeQrDataUri,
   signJwt,
+  extractTxHash64,
   verifyTransactionOnChain,
   TEAM_MILESTONES,
   TASK_CATALOG,
@@ -346,8 +347,8 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
 
   if (method === 'GET' && path === '/api/deposit-info') {
     const settings = await getSettingsMap(sql);
-    const trc20Address = settings.trc20_address || 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE';
-    const bep20Address = settings.bep20_address || '0x742d35Cc6634C0532925a3b844Bc454e4438f44e';
+    const trc20Address = String(settings.trc20_address || 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE').trim();
+    const bep20Address = String(settings.bep20_address || '0x742d35Cc6634C0532925a3b844Bc454e4438f44e').trim();
     const [trc20Qr, bep20Qr] = await Promise.all([makeQrDataUri(trc20Address), makeQrDataUri(bep20Address)]);
     return {
       status: 200,
@@ -356,11 +357,15 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
         bep20Address,
         trc20Qr,
         bep20Qr,
+        unifiedStaticWallets: true,
         minDeposit: Number(settings.min_deposit || 10),
         minWithdraw: Number(settings.min_withdraw || 5),
         dailyWithdrawLimit: Number(settings.daily_withdraw_limit || 2),
         withdrawFeePercent: Number(settings.withdraw_fee_percent || 0),
         autoApproveDeposits: settings.auto_approve_deposits === 'true',
+        blockchainAutoApprove: settings.blockchain_auto_approve_verified !== 'false',
+        strictBlockchainTxid: settings.strict_blockchain_txid !== 'false',
+        txidMaxAgeHours: Number(settings.txid_max_age_hours || 72),
         autoApproveWithdrawals: settings.auto_approve_withdrawals === 'true',
         whatsappNumber: settings.whatsapp_number || '963990000000'
       }
@@ -370,74 +375,142 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
   if (method === 'POST' && path === '/api/transactions/deposit') {
     const amount = round2(Number(body.amount));
     const network = ['TRC20', 'BEP20'].includes(body.network) ? body.network : 'TRC20';
-    const txid = String(body.txid || '').trim();
+    const rawTxid = String(body.txid || '').trim();
+    const clean64 = extractTxHash64(rawTxid);
     const settings = await getSettingsMap(sql);
     const minDeposit = Number(settings.min_deposit || 10);
+    const strictBlockchainTxid = settings.strict_blockchain_txid !== 'false';
+    const autoApproveAlways = settings.auto_approve_deposits === 'true';
+    const maxAgeHours = Number(settings.txid_max_age_hours || 72);
+
     if (!amount || isNaN(amount) || amount < minDeposit) {
       return { status: 400, json: { error: `الحد الأدنى للإيداع هو ${minDeposit} USDT` } };
     }
     if (amount > 100000) {
       return { status: 400, json: { error: 'المبلغ المدخل يتجاوز الحد المسموح للعملية الواحدة' } };
     }
-    if (!txid || txid.length < 6) {
-      return { status: 400, json: { error: 'يرجى إدخال معرّف عملية التحويل (TXID) بشكل صحيح (6 محارف على الأقل) لتوثيق الإيداع' } };
+
+    if (strictBlockchainTxid && !autoApproveAlways && !clean64) {
+      return {
+        status: 400,
+        json: {
+          error:
+            network === 'BEP20'
+              ? 'صيغة معرّف العملية (TXID) غير صحيحة لشبكة BEP20 — يرجى لصق معرّف التحويل المكوّن من 64 حرفاً ورقماً (أو رابط BscScan)'
+              : 'صيغة معرّف العملية (TXID) غير صحيحة لشبكة TRC20 — يرجى لصق معرّف التحويل المكوّن من 64 حرفاً ورقماً (أو رابط TronScan)'
+        }
+      };
     }
+
+    const txid = clean64 ? (network === 'BEP20' ? '0x' + clean64 : clean64) : rawTxid;
+    if (!txid || txid.length < 6) {
+      return { status: 400, json: { error: 'يرجى إدخال معرّف عملية التحويل (TXID) بشكل صحيح لتوثيق الإيداع' } };
+    }
+
+    const normTxKey = clean64 || txid.toLowerCase().replace(/^0x/, '');
     const [dup] = await sql`
       SELECT id FROM arona_boost.transactions
-      WHERE type = 'deposit' AND LOWER(wallet_or_txid) = LOWER(${txid}) AND status != 'rejected'
+      WHERE type = 'deposit'
+        AND regexp_replace(lower(trim(wallet_or_txid)), '^0x', '') = ${normTxKey}
+        AND status != 'rejected'
       LIMIT 1
     `;
     if (dup) {
-      return { status: 409, json: { error: 'معرّف المعاملة (TXID) هذا مسجل مسبقاً في النظام، يرجى التأكد من الرقم' } };
+      return { status: 409, json: { error: 'معرّف المعاملة (TXID) هذا مستخدم وموثّق مسبقاً في النظام — لا يمكن استخدام نفس المعاملة مرتين' } };
     }
 
-    const expectedWallet = network === 'BEP20' ? settings.bep20_address : settings.trc20_address;
-    const chainReport = await verifyTransactionOnChain({ txid, network, expectedAmount: amount, expectedWallet });
-    const autoApproveAlways = settings.auto_approve_deposits === 'true';
-    const autoApproveByBlockchain = settings.blockchain_auto_approve_verified === 'true' && chainReport.fullyVerified === true;
+    const expectedWallet = String(network === 'BEP20' ? settings.bep20_address : settings.trc20_address || '').trim();
+    const chainReport = await verifyTransactionOnChain({
+      txid,
+      network,
+      expectedAmount: amount,
+      expectedWallet,
+      maxAgeHours
+    });
+
+    if (
+      strictBlockchainTxid &&
+      !autoApproveAlways &&
+      !chainReport.fullyVerified &&
+      chainReport.statusBadge !== 'network_error'
+    ) {
+      return {
+        status: 400,
+        json: {
+          error: chainReport.summaryAr || 'تعذر التحقق من معرّف العملية (TXID) على البلوكتشين',
+          chainVerification: chainReport
+        }
+      };
+    }
+
+    const creditedAmount =
+      chainReport.fullyVerified && Number(chainReport.onChainAmount) > 0
+        ? round2(Number(chainReport.onChainAmount))
+        : amount;
+
+    if (chainReport.fullyVerified && creditedAmount + 1.0 < minDeposit) {
+      return {
+        status: 400,
+        json: {
+          error: `المبلغ الفعلي المستلم على الشبكة ($${creditedAmount.toFixed(2)} USDT) أقل من الحد الأدنى للإيداع (${minDeposit} USDT)`,
+          chainVerification: chainReport
+        }
+      };
+    }
+
+    const autoApproveByBlockchain =
+      settings.blockchain_auto_approve_verified !== 'false' && chainReport.fullyVerified === true;
     const shouldCompleteImmediately = autoApproveAlways || autoApproveByBlockchain;
     const refCode = generateRefCode('DEP');
     const status = shouldCompleteImmediately ? 'completed' : 'pending';
     const note = autoApproveByBlockchain
-      ? `تم التحقق الآلي من البلوكتشين واعتماد الإيداع عبر ${network}`
+      ? `تم التحقق الآلي الفوري عبر TXID على شبكة ${network} واعتماد $${creditedAmount.toFixed(2)} USDT`
       : autoApproveAlways
       ? `إيداع موثق عبر شبكة ${network}`
       : `طلب إيداع قيد مراجعة الإدارة (${chainReport.summaryAr})`;
 
-    const createdTx = await sql.begin(async (tx) => {
-      const [ins] = await tx`
-        INSERT INTO arona_boost.transactions (
-          user_id, type, amount, fee_amount, net_amount, network,
-          wallet_or_txid, reference_code, status, note, chain_status, chain_details_json
-        ) VALUES (
-          ${user.id}, 'deposit', ${amount}, 0, ${amount}, ${network},
-          ${txid}, ${refCode}, ${status}, ${note}, ${chainReport.statusBadge || 'unverified'}, ${JSON.stringify(chainReport)}
-        ) RETURNING *
-      `;
-      if (shouldCompleteImmediately) {
-        await applyApprovedDepositToUser(tx, user.id, amount, settings);
-        await distributeReferralCommissions(tx, user.id, amount);
-        await grantDepositWheelSpins(tx, user.id, amount, settings);
-        await createNotification(
-          tx,
-          user.id,
-          `تم تأكيد إيداعك +$${amount.toFixed(2)} USDT`,
-          autoApproveByBlockchain
-            ? `تم التحقق الآلي من معاملتك على بلوكتشين ${network} وإضافة الرصيد فوراً!`
-            : `تم توثيق المعاملة (${refCode}) وإضافة الرصيد إلى محفظتك بنجاح.`,
-          'success'
-        );
-      } else {
-        await createNotification(
-          tx,
-          user.id,
-          `استلام طلب إيداع $${amount.toFixed(2)} USDT`,
-          `تم تسجيل طلب الإيداع (${refCode}) وفحصه أولياً على الشبكة وهو قيد المراجعة لاعتماد الرصيد.`,
-          'info'
-        );
+    let createdTx;
+    try {
+      createdTx = await sql.begin(async (tx) => {
+        const [ins] = await tx`
+          INSERT INTO arona_boost.transactions (
+            user_id, type, amount, fee_amount, net_amount, network,
+            wallet_or_txid, reference_code, status, note, chain_status, chain_details_json
+          ) VALUES (
+            ${user.id}, 'deposit', ${creditedAmount}, 0, ${creditedAmount}, ${network},
+            ${txid}, ${refCode}, ${status}, ${note}, ${chainReport.statusBadge || 'unverified'}, ${JSON.stringify(chainReport)}
+          ) RETURNING *
+        `;
+        if (shouldCompleteImmediately) {
+          await applyApprovedDepositToUser(tx, user.id, creditedAmount, settings);
+          await distributeReferralCommissions(tx, user.id, creditedAmount);
+          await grantDepositWheelSpins(tx, user.id, creditedAmount, settings);
+          await createNotification(
+            tx,
+            user.id,
+            `تم تأكيد إيداعك +$${creditedAmount.toFixed(2)} USDT`,
+            autoApproveByBlockchain
+              ? `تم التحقق الآلي من معرّف TXID على بلوكتشين ${network} وإضافة الرصيد فوراً إلى حسابك!`
+              : `تم توثيق المعاملة (${refCode}) وإضافة الرصيد إلى محفظتك بنجاح.`,
+            'success'
+          );
+        } else {
+          await createNotification(
+            tx,
+            user.id,
+            `استلام طلب إيداع $${creditedAmount.toFixed(2)} USDT`,
+            `تم تسجيل طلب الإيداع (${refCode}) وفحصه أولياً على الشبكة وهو قيد المراجعة لاعتماد الرصيد.`,
+            'info'
+          );
+        }
+        return ins;
+      });
+    } catch (dbErr) {
+      if (String(dbErr?.code) === '23505') {
+        return { status: 409, json: { error: 'معرّف المعاملة (TXID) هذا مستخدم وموثّق مسبقاً في النظام' } };
       }
-      return ins;
-    });
+      throw dbErr;
+    }
 
     const [updatedUser] = await sql`SELECT * FROM arona_boost.users WHERE id = ${user.id}`;
     const serialized = await serializeUser(sql, updatedUser, settings);
@@ -446,10 +519,10 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
       status: 201,
       json: {
         message: autoApproveByBlockchain
-          ? `تم التحقق من المعاملة على بلوكتشين ${network} واعتماد +${amount.toFixed(2)} USDT تلقائياً!`
+          ? `تم التحقق الآلي من الـ TXID على بلوكتشين ${network} وإضافة +${creditedAmount.toFixed(2)} USDT فوراً!`
           : shouldCompleteImmediately
-          ? `تم إيداع ${amount.toFixed(2)} USDT بنجاح وتحديث رصيدك!`
-          : `تم إرسال طلب إيداع ${amount.toFixed(2)} USDT بمعرّف TXID بنجاح وهو قيد مراجعة الإدارة`,
+          ? `تم إيداع ${creditedAmount.toFixed(2)} USDT بنجاح وتحديث رصيدك!`
+          : `تم إرسال طلب إيداع ${creditedAmount.toFixed(2)} USDT بمعرّف TXID بنجاح وهو قيد مراجعة الإدارة`,
         transaction: createdTx,
         chainVerification: chainReport,
         user: serialized,

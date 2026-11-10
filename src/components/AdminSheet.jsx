@@ -63,7 +63,8 @@ export default function AdminSheet({
     bep20_address: '',
     whatsapp_number: '',
     live_ticker_enabled: 'true',
-    blockchain_auto_approve_verified: 'false',
+    blockchain_auto_approve_verified: 'true',
+    strict_blockchain_txid: 'true',
     auto_approve_deposits: 'false',
     auto_approve_withdrawals: 'false',
     min_deposit: '10',
@@ -154,7 +155,9 @@ export default function AdminSheet({
             whatsapp_number: res.settings.whatsapp_number || '963990000000',
             live_ticker_enabled: res.settings.live_ticker_enabled ?? 'true',
             blockchain_auto_approve_verified:
-              res.settings.blockchain_auto_approve_verified || 'false',
+              res.settings.blockchain_auto_approve_verified ?? 'true',
+            strict_blockchain_txid:
+              res.settings.strict_blockchain_txid ?? 'true',
             auto_approve_deposits: res.settings.auto_approve_deposits || 'false',
             auto_approve_withdrawals: res.settings.auto_approve_withdrawals || 'false',
             min_deposit: res.settings.min_deposit || '10',
@@ -1992,31 +1995,67 @@ export default function AdminSheet({
           ) : tab === 'settings' ? (
             /* TAB 5: DYNAMIC VIP PLANS, WALLETS, WHATSAPP & SECURITY SETTINGS */
             <form onSubmit={handleSaveSettings} className="space-y-4">
-              {/* Wallets & WhatsApp */}
+              {/* Unified Static Wallets & WhatsApp */}
               <div className="rounded-2xl bg-white border border-slate-200/85 p-3.5 space-y-3">
-                <h4 className="text-xs font-extrabold text-slate-900">
-                  عناوين المحافظ ورقم دعم واتساب
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold text-slate-900">
+                    عناوين محافظ الإيداع الثابتة الموحّدة لجميع المستخدمين
+                  </h4>
+                  <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold">
+                    تظهر لكل الأعضاء + QR تلقائي
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  ضع هنا عنوان محفظتك الرسمي لشبكتي TRC20 و BEP20؛ سيظهر نفس العنوان الثابت لجميع المستخدمين مع التحقق الفوري عبر TXID.
+                </p>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    محفظة الإيداع USDT (TRC20)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600">
+                      محفظة الإيداع الموحّدة USDT (TRC20 — شبكة TRON)
+                    </label>
+                    <span
+                      className={`text-[10px] font-bold ${
+                        /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(form.trc20_address.trim())
+                          ? 'text-emerald-700'
+                          : 'text-rose-600'
+                      }`}
+                    >
+                      {/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(form.trc20_address.trim())
+                        ? '✓ صيغة TRC20 صحيحة'
+                        : 'يبدأ بـ T (34 محرفاً)'}
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={form.trc20_address}
                     onChange={(e) => setForm({ ...form, trc20_address: e.target.value })}
+                    placeholder="T..."
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono ltr-num"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    محفظة الإيداع USDT (BEP20)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600">
+                      محفظة الإيداع الموحّدة USDT (BEP20 — BNB Smart Chain)
+                    </label>
+                    <span
+                      className={`text-[10px] font-bold ${
+                        /^0x[0-9a-fA-F]{40}$/.test(form.bep20_address.trim())
+                          ? 'text-emerald-700'
+                          : 'text-rose-600'
+                      }`}
+                    >
+                      {/^0x[0-9a-fA-F]{40}$/.test(form.bep20_address.trim())
+                        ? '✓ صيغة BEP20 صحيحة'
+                        : 'يبدأ بـ 0x (42 محرفاً)'}
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={form.bep20_address}
                     onChange={(e) => setForm({ ...form, bep20_address: e.target.value })}
+                    placeholder="0x..."
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono ltr-num"
                   />
                 </div>
@@ -2037,7 +2076,7 @@ export default function AdminSheet({
               {/* Financial Rules & Manual/Auto Review Mode */}
               <div className="rounded-2xl bg-white border border-slate-200/85 p-3.5 space-y-3">
                 <h4 className="text-xs font-extrabold text-slate-900">
-                  ضوابط السحب والمراجعة الأمنية
+                  ضوابط التحقق عبر TXID والسحب والمراجعة الأمنية
                 </h4>
 
                 <div className="grid grid-cols-2 gap-2.5">
@@ -2116,7 +2155,7 @@ export default function AdminSheet({
 
                 <label className="flex items-center justify-between rounded-xl bg-emerald-50/70 border border-emerald-200 p-2.5 cursor-pointer">
                   <span className="text-xs font-bold text-emerald-950">
-                    اعتماد تلقائي ذكي للإيداع عند تطابق فحص البلوكتشين 100% (TRON / BSC)
+                    اعتماد تلقائي فوري للإيداع عند تطابق فحص البلوكتشين 100% عبر TXID (TRON / BSC)
                   </span>
                   <input
                     type="checkbox"
@@ -2128,6 +2167,23 @@ export default function AdminSheet({
                       })
                     }
                     className="w-4 h-4 accent-emerald-600"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between rounded-xl bg-teal-50/70 border border-teal-200 p-2.5 cursor-pointer">
+                  <span className="text-xs font-bold text-teal-950">
+                    رفض الـ TXID الوهمي أو غير المؤكد على البلوكتشين فوراً (وضع التحقق الصارم)
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={form.strict_blockchain_txid === 'true'}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        strict_blockchain_txid: e.target.checked ? 'true' : 'false'
+                      })
+                    }
+                    className="w-4 h-4 accent-teal-600"
                   />
                 </label>
 

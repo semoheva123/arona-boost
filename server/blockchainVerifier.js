@@ -39,9 +39,6 @@ function encodeBase58(buffer) {
   );
 }
 
-/**
- * Converts a 20-byte EVM/TVM hex address (or 32-byte log topic) into a TRON Base58Check address (T...)
- */
 function tronHexToBase58(rawHex = '') {
   const clean = String(rawHex).replace(/^0x/i, '').toLowerCase();
   const addr20 = clean.length >= 40 ? clean.slice(-40) : clean.padStart(40, '0');
@@ -54,11 +51,24 @@ function round2(n) {
   return Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 }
 
-/**
- * Verify a TRC20 USDT transaction on the live TRON mainnet via TronGrid API
- */
-async function verifyTronTrc20({ txid, expectedAmount, expectedWallet }) {
-  const cleanHash = String(txid || '').trim().replace(/^0x/i, '');
+function extractTxHash64(rawInput = '') {
+  const s = String(rawInput || '').trim();
+  if (!s) return '';
+  const match = s.match(/(?:0x)?([0-9a-fA-F]{64})(?![0-9a-fA-F])/);
+  return match ? match[1].toLowerCase() : '';
+}
+
+function validateCryptoWalletFormat(addr = '', network = 'TRC20') {
+  const clean = String(addr || '').trim();
+  if (network === 'BEP20') {
+    return /^0x[0-9a-fA-F]{40}$/.test(clean);
+  }
+  return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(clean);
+}
+
+async function verifyTronTrc20({ txid, expectedAmount, expectedWallet, maxAgeHours = 72 }) {
+  const extracted = extractTxHash64(txid);
+  const cleanHash = extracted || String(txid || '').trim().replace(/^0x/i, '');
   const explorerUrl = `https://tronscan.org/#/transaction/${cleanHash}`;
 
   if (!/^[0-9a-fA-F]{64}$/.test(cleanHash)) {
@@ -72,6 +82,7 @@ async function verifyTronTrc20({ txid, expectedAmount, expectedWallet }) {
       isUsdtTransfer: false,
       recipientMatches: false,
       amountMatches: false,
+      isFreshTx: false,
       fullyVerified: false,
       onChainAmount: null,
       expectedAmount,
@@ -81,9 +92,16 @@ async function verifyTronTrc20({ txid, expectedAmount, expectedWallet }) {
       explorerUrl,
       statusBadge: 'invalid_format',
       summaryAr:
-        'صيغة معرّف TXID غير مطابقة لشبكة TRON (يجب أن يتكون من 64 محرفاً سداسياً عشرياً)'
+        'صيغة معرّف TXID غير صحيحة لشبكة TRON (يجب لصق معرّف التحويل المكوّن من 64 حرفاً ورقماً أو رابط TronScan)'
     };
   }
+
+  let foundOnChain = false;
+  let txSuccess = false;
+  let contractRet = 'UNKNOWN';
+  let logs = [];
+  let blockTimestampMs = 0;
+  let hadRpcSuccess = false;
 
   try {
     const [infoRes, txRes] = await Promise.all([
@@ -91,150 +109,75 @@ async function verifyTronTrc20({ txid, expectedAmount, expectedWallet }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value: cleanHash }),
-        signal: AbortSignal.timeout(9000)
+        signal: AbortSignal.timeout(7000)
       }),
       fetch('https://api.trongrid.io/wallet/gettransactionbyid', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value: cleanHash }),
-        signal: AbortSignal.timeout(9000)
+        signal: AbortSignal.timeout(7000)
       })
     ]);
-
-    const info = await infoRes.json();
-    const tx = await txRes.json();
-
-    if ((!info || !info.id) && (!tx || !tx.txID)) {
-      return {
-        checkedAt: new Date().toISOString(),
-        network: 'TRC20',
-        txid: cleanHash,
-        validFormat: true,
-        foundOnChain: false,
-        txSuccess: false,
-        isUsdtTransfer: false,
-        recipientMatches: false,
-        amountMatches: false,
-        fullyVerified: false,
-        onChainAmount: null,
-        expectedAmount,
-        fromAddress: null,
-        toAddress: null,
-        expectedWallet,
-        explorerUrl,
-        statusBadge: 'not_found',
-        summaryAr: 'لم يتم العثور على هذه المعاملة على بلوكتشين TRON حتى الآن'
-      };
-    }
-
-    const contractRet =
-      info?.receipt?.result || tx?.ret?.[0]?.contractRet || 'UNKNOWN';
-    const txSuccess = contractRet === 'SUCCESS';
-
-    const logs = Array.isArray(info?.log) ? info.log : [];
-    let matchedTransfer = null;
-
-    for (const lg of logs) {
-      const contractHex = String(lg.address || '').replace(/^0x|^41/i, '').toLowerCase();
-      const topics = Array.isArray(lg.topics) ? lg.topics : [];
-      const topic0 = String(topics[0] || '').replace(/^0x/i, '').toLowerCase();
-
-      if (
-        contractHex === TRON_USDT_HEX_NO_PREFIX &&
-        topic0 === TRANSFER_EVENT_TOPIC0 &&
-        topics.length >= 3
-      ) {
-        const fromAddr = tronHexToBase58(topics[1]);
-        const toAddr = tronHexToBase58(topics[2]);
-        const rawHexData = String(lg.data || '0').replace(/^0x/i, '') || '0';
-        const rawUnits = BigInt('0x' + rawHexData);
-        const usdtVal = Number(rawUnits) / 1e6;
-
-        matchedTransfer = {
-          fromAddress: fromAddr,
-          toAddress: toAddr,
-          onChainAmount: round2(usdtVal)
-        };
-
-        if (toAddr === expectedWallet) {
-          break;
-        }
+    if (infoRes.ok || txRes.ok) {
+      hadRpcSuccess = true;
+      const info = await infoRes.json().catch(() => ({}));
+      const tx = await txRes.json().catch(() => ({}));
+      if ((info && info.id) || (tx && tx.txID)) {
+        foundOnChain = true;
+        contractRet = info?.receipt?.result || tx?.ret?.[0]?.contractRet || 'UNKNOWN';
+        txSuccess = contractRet === 'SUCCESS';
+        logs = Array.isArray(info?.log) ? info.log : [];
+        blockTimestampMs = Number(info?.blockTimeStamp || tx?.raw_data?.timestamp || 0);
       }
     }
+  } catch {
+    // try JSON-RPC failover
+  }
 
-    if (!matchedTransfer) {
-      return {
-        checkedAt: new Date().toISOString(),
-        network: 'TRC20',
-        txid: cleanHash,
-        validFormat: true,
-        foundOnChain: true,
-        txSuccess,
-        isUsdtTransfer: false,
-        recipientMatches: false,
-        amountMatches: false,
-        fullyVerified: false,
-        onChainAmount: null,
-        expectedAmount,
-        fromAddress: null,
-        toAddress: null,
-        expectedWallet,
-        blockNumber: info?.blockNumber || null,
-        explorerUrl,
-        statusBadge: 'mismatch',
-        summaryAr: txSuccess
-          ? 'المعاملة موجودة على TRON ولكنها ليست تحويل عملة USDT (TRC20) رسمية'
-          : `المعاملة موجودة على TRON لكن حالتها (${contractRet})`
-      };
+  if (!foundOnChain) {
+    try {
+      const rpcRes = await fetch('https://tron-rpc.publicnode.com/jsonrpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_getTransactionReceipt',
+          params: ['0x' + cleanHash]
+        }),
+        signal: AbortSignal.timeout(7000)
+      });
+      if (rpcRes.ok) {
+        hadRpcSuccess = true;
+        const receipt = (await rpcRes.json().catch(() => ({})))?.result;
+        if (receipt) {
+          foundOnChain = true;
+          txSuccess = receipt.status === '0x1';
+          contractRet = txSuccess ? 'SUCCESS' : 'REVERT';
+          logs = Array.isArray(receipt.logs) ? receipt.logs : [];
+          if (receipt.blockNumber) {
+            const blkRes = await fetch('https://tron-rpc.publicnode.com/jsonrpc', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 2,
+                method: 'eth_getBlockByNumber',
+                params: [receipt.blockNumber, false]
+              }),
+              signal: AbortSignal.timeout(5000)
+            }).catch(() => null);
+            const blk = blkRes ? (await blkRes.json().catch(() => ({})))?.result : null;
+            if (blk?.timestamp) blockTimestampMs = parseInt(blk.timestamp, 16) * 1000;
+          }
+        }
+      }
+    } catch {
+      // ignore
     }
+  }
 
-    const recipientMatches =
-      matchedTransfer.toAddress.trim() === String(expectedWallet || '').trim();
-    const amountMatches =
-      matchedTransfer.onChainAmount + 0.05 >= Number(expectedAmount || 0) &&
-      Math.abs(matchedTransfer.onChainAmount - Number(expectedAmount || 0)) <= 1.0;
-    const fullyVerified = txSuccess && recipientMatches && amountMatches;
-
-    let summaryAr = '';
-    if (fullyVerified) {
-      summaryAr = `تم التحقق بنجاح على TRON: تحويل مؤكد بقيمة $${matchedTransfer.onChainAmount.toFixed(
-        2
-      )} USDT إلى محفظة المنصة`;
-    } else if (!txSuccess) {
-      summaryAr = `المعاملة فاشلة على الشبكة (${contractRet})`;
-    } else if (!recipientMatches) {
-      summaryAr = `تنبيه: المستلم على الشبكة (${matchedTransfer.toAddress.slice(
-        0,
-        8
-      )}...) لا يطابق محفظة المنصة!`;
-    } else {
-      summaryAr = `تنبيه: المبلغ الفعلي على الشبكة ($${matchedTransfer.onChainAmount.toFixed(
-        2
-      )} USDT) يختلف عن المبلغ المدخل ($${Number(expectedAmount).toFixed(2)})`;
-    }
-
-    return {
-      checkedAt: new Date().toISOString(),
-      network: 'TRC20',
-      txid: cleanHash,
-      validFormat: true,
-      foundOnChain: true,
-      txSuccess,
-      isUsdtTransfer: true,
-      recipientMatches,
-      amountMatches,
-      fullyVerified,
-      onChainAmount: matchedTransfer.onChainAmount,
-      expectedAmount,
-      fromAddress: matchedTransfer.fromAddress,
-      toAddress: matchedTransfer.toAddress,
-      expectedWallet,
-      blockNumber: info?.blockNumber || null,
-      explorerUrl,
-      statusBadge: fullyVerified ? 'verified' : 'mismatch',
-      summaryAr
-    };
-  } catch (err) {
+  if (!hadRpcSuccess && !foundOnChain) {
     return {
       checkedAt: new Date().toISOString(),
       network: 'TRC20',
@@ -245,6 +188,7 @@ async function verifyTronTrc20({ txid, expectedAmount, expectedWallet }) {
       isUsdtTransfer: false,
       recipientMatches: false,
       amountMatches: false,
+      isFreshTx: false,
       fullyVerified: false,
       onChainAmount: null,
       expectedAmount,
@@ -253,16 +197,130 @@ async function verifyTronTrc20({ txid, expectedAmount, expectedWallet }) {
       expectedWallet,
       explorerUrl,
       statusBadge: 'network_error',
-      summaryAr: 'تعذر الاتصال المؤقت بعقدة TRON، يرجى إعادة الفحص بعد لحظات'
+      summaryAr: 'تعذر الاتصال المؤقت بعقدة بلوكتشين TRON، تم حفظ الطلب للمراجعة الآلية'
     };
   }
+
+  if (!foundOnChain) {
+    return {
+      checkedAt: new Date().toISOString(),
+      network: 'TRC20',
+      txid: cleanHash,
+      validFormat: true,
+      foundOnChain: false,
+      txSuccess: false,
+      isUsdtTransfer: false,
+      recipientMatches: false,
+      amountMatches: false,
+      isFreshTx: false,
+      fullyVerified: false,
+      onChainAmount: null,
+      expectedAmount,
+      fromAddress: null,
+      toAddress: null,
+      expectedWallet,
+      explorerUrl,
+      statusBadge: 'not_found',
+      summaryAr:
+        'لم يتم العثور على هذا الـ TXID على بلوكتشين TRON — تأكد من الرقم أو انتظر 30 ثانية لتأكيد الشبكة إن أرسلت للتو'
+    };
+  }
+
+  let matchedTransfer = null;
+  const cleanExpectedWallet = String(expectedWallet || '').trim();
+  for (const lg of logs) {
+    const contractHex = String(lg.address || '').replace(/^0x|^41/i, '').toLowerCase();
+    const topics = Array.isArray(lg.topics) ? lg.topics : [];
+    const topic0 = String(topics[0] || '').replace(/^0x/i, '').toLowerCase();
+    if (
+      contractHex === TRON_USDT_HEX_NO_PREFIX &&
+      topic0 === TRANSFER_EVENT_TOPIC0 &&
+      topics.length >= 3
+    ) {
+      const fromAddr = tronHexToBase58(topics[1]);
+      const toAddr = tronHexToBase58(topics[2]);
+      const rawHexData = String(lg.data || '0').replace(/^0x/i, '') || '0';
+      const usdtVal = Number(BigInt('0x' + rawHexData)) / 1e6;
+      matchedTransfer = {
+        fromAddress: fromAddr,
+        toAddress: toAddr,
+        onChainAmount: round2(usdtVal)
+      };
+      if (toAddr === cleanExpectedWallet) break;
+    }
+  }
+
+  if (!matchedTransfer) {
+    return {
+      checkedAt: new Date().toISOString(),
+      network: 'TRC20',
+      txid: cleanHash,
+      validFormat: true,
+      foundOnChain: true,
+      txSuccess,
+      isUsdtTransfer: false,
+      recipientMatches: false,
+      amountMatches: false,
+      isFreshTx: true,
+      fullyVerified: false,
+      onChainAmount: null,
+      expectedAmount,
+      fromAddress: null,
+      toAddress: null,
+      expectedWallet: cleanExpectedWallet,
+      explorerUrl,
+      statusBadge: 'mismatch',
+      summaryAr: txSuccess
+        ? 'المعاملة موجودة على TRON ولكنها ليست تحويل عملة USDT (TRC20) رسمية'
+        : `المعاملة فاشلة على بلوكتشين TRON (${contractRet})`
+    };
+  }
+
+  const recipientMatches = matchedTransfer.toAddress.trim() === cleanExpectedWallet;
+  const feeTolerance = Math.max(2.0, Number(expectedAmount || 0) * 0.05);
+  const amountMatches =
+    Math.abs(matchedTransfer.onChainAmount - Number(expectedAmount || 0)) <= feeTolerance;
+  const ageHours = blockTimestampMs > 0 ? (Date.now() - blockTimestampMs) / 3600000 : 0;
+  const isFreshTx = !(maxAgeHours > 0 && blockTimestampMs > 0 && ageHours > maxAgeHours);
+  const fullyVerified = txSuccess && recipientMatches && amountMatches && isFreshTx;
+
+  const summaryAr = fullyVerified
+    ? `تم التحقق بنجاح على TRON: تحويل مؤكد بقيمة $${matchedTransfer.onChainAmount.toFixed(2)} USDT إلى عنوان الإيداع الموحّد`
+    : !txSuccess
+    ? `المعاملة فاشلة على الشبكة (${contractRet})`
+    : !recipientMatches
+    ? `عنوان المستلم في هذه المعاملة (${matchedTransfer.toAddress.slice(0, 8)}...) لا يطابق عنوان الإيداع الثابت للمنصة!`
+    : !isFreshTx
+    ? `هذه المعاملة قديمة على الشبكة (مضى عليها أكثر من ${maxAgeHours} ساعة) ولا يُسمح بإعادة استخدامها`
+    : `المبلغ الفعلي المستلم على الشبكة ($${matchedTransfer.onChainAmount.toFixed(2)} USDT) لا يطابق المبلغ المدخل ($${Number(expectedAmount || 0).toFixed(2)} USDT) — يرجى إدخال المبلغ الصافي الفعلي`;
+
+  return {
+    checkedAt: new Date().toISOString(),
+    network: 'TRC20',
+    txid: cleanHash,
+    validFormat: true,
+    foundOnChain: true,
+    txSuccess,
+    isUsdtTransfer: true,
+    recipientMatches,
+    amountMatches,
+    isFreshTx,
+    blockTimestampMs: blockTimestampMs || null,
+    fullyVerified,
+    onChainAmount: matchedTransfer.onChainAmount,
+    expectedAmount,
+    fromAddress: matchedTransfer.fromAddress,
+    toAddress: matchedTransfer.toAddress,
+    expectedWallet: cleanExpectedWallet,
+    explorerUrl,
+    statusBadge: fullyVerified ? 'verified' : !isFreshTx ? 'expired_tx' : 'mismatch',
+    summaryAr
+  };
 }
 
-/**
- * Verify a BEP20 USDT transaction on BNB Smart Chain mainnet via JSON-RPC
- */
-async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
-  const cleanNoPrefix = String(txid || '').trim().replace(/^0x/i, '');
+async function verifyBscBep20({ txid, expectedAmount, expectedWallet, maxAgeHours = 72 }) {
+  const extracted = extractTxHash64(txid);
+  const cleanNoPrefix = extracted || String(txid || '').trim().replace(/^0x/i, '');
   const fullHash = '0x' + cleanNoPrefix;
   const explorerUrl = `https://bscscan.com/tx/${fullHash}`;
 
@@ -277,6 +335,7 @@ async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
       isUsdtTransfer: false,
       recipientMatches: false,
       amountMatches: false,
+      isFreshTx: false,
       fullyVerified: false,
       onChainAmount: null,
       expectedAmount,
@@ -286,16 +345,16 @@ async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
       explorerUrl,
       statusBadge: 'invalid_format',
       summaryAr:
-        'صيغة معرّف TXID غير مطابقة لشبكة BSC BEP20 (يجب أن يتكون من 64 محرفاً سداسياً عشرياً)'
+        'صيغة معرّف TXID غير صحيحة لشبكة BSC BEP20 (يجب لصق معرّف التحويل المكوّن من 64 حرفاً ورقماً أو رابط BscScan)'
     };
   }
 
-  const rpcEndpoints = [
+  const cleanExpectedLower = String(expectedWallet || '').trim().toLowerCase();
+  for (const rpcUrl of [
     'https://bsc-rpc.publicnode.com',
-    'https://bsc-dataseed.binance.org'
-  ];
-
-  for (const rpcUrl of rpcEndpoints) {
+    'https://bsc-dataseed.binance.org',
+    'https://1rpc.io/bnb'
+  ]) {
     try {
       const rpcRes = await fetch(rpcUrl, {
         method: 'POST',
@@ -306,12 +365,12 @@ async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
           method: 'eth_getTransactionReceipt',
           params: [fullHash]
         }),
-        signal: AbortSignal.timeout(9000)
+        signal: AbortSignal.timeout(7000)
       });
-
-      const rpcData = await rpcRes.json();
-      const receipt = rpcData?.result;
-
+      if (!rpcRes.ok) continue;
+      const rpcJson = await rpcRes.json();
+      if (rpcJson?.error) continue;
+      const receipt = rpcJson?.result;
       if (!receipt) {
         return {
           checkedAt: new Date().toISOString(),
@@ -323,6 +382,7 @@ async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
           isUsdtTransfer: false,
           recipientMatches: false,
           amountMatches: false,
+          isFreshTx: false,
           fullyVerified: false,
           onChainAmount: null,
           expectedAmount,
@@ -331,19 +391,33 @@ async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
           expectedWallet,
           explorerUrl,
           statusBadge: 'not_found',
-          summaryAr: 'لم يتم العثور على هذه المعاملة على شبكة BNB Smart Chain (BEP20)'
+          summaryAr:
+            'لم يتم العثور على هذا الـ TXID على شبكة BNB Smart Chain (BEP20) — تأكد من الشبكة أو انتظر تأكيد البلوكشين'
         };
       }
-
       const txSuccess = receipt.status === '0x1';
-      const logs = Array.isArray(receipt.logs) ? receipt.logs : [];
-      let matchedTransfer = null;
+      let blockTimestampMs = 0;
+      if (receipt.blockNumber) {
+        const blkRes = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'eth_getBlockByNumber',
+            params: [receipt.blockNumber, false]
+          }),
+          signal: AbortSignal.timeout(5000)
+        }).catch(() => null);
+        const blk = blkRes ? (await blkRes.json().catch(() => ({})))?.result : null;
+        if (blk?.timestamp) blockTimestampMs = parseInt(blk.timestamp, 16) * 1000;
+      }
 
-      for (const lg of logs) {
+      let matchedTransfer = null;
+      for (const lg of Array.isArray(receipt.logs) ? receipt.logs : []) {
         const contractAddr = String(lg.address || '').toLowerCase();
         const topics = Array.isArray(lg.topics) ? lg.topics : [];
         const topic0 = String(topics[0] || '').replace(/^0x/i, '').toLowerCase();
-
         if (
           contractAddr === BSC_USDT_CONTRACT &&
           topic0 === TRANSFER_EVENT_TOPIC0 &&
@@ -351,19 +425,13 @@ async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
         ) {
           const fromAddr = '0x' + topics[1].slice(-40).toLowerCase();
           const toAddr = '0x' + topics[2].slice(-40).toLowerCase();
-          const rawWei = BigInt(lg.data || '0x0');
-          // 18 decimals for BSC-USD -> divide by 1e14 first to keep 4 decimals safely
-          const scaled = Number(rawWei / 100000000000000n) / 10000;
-
+          const scaled = Number(BigInt(lg.data || '0x0') / 100000000000000n) / 10000;
           matchedTransfer = {
             fromAddress: fromAddr,
             toAddress: toAddr,
             onChainAmount: round2(scaled)
           };
-
-          if (toAddr === String(expectedWallet || '').trim().toLowerCase()) {
-            break;
-          }
+          if (toAddr === cleanExpectedLower) break;
         }
       }
 
@@ -378,43 +446,36 @@ async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
           isUsdtTransfer: false,
           recipientMatches: false,
           amountMatches: false,
+          isFreshTx: true,
           fullyVerified: false,
           onChainAmount: null,
           expectedAmount,
-          fromAddress: receipt.from || null,
-          toAddress: receipt.to || null,
+          fromAddress: null,
+          toAddress: null,
           expectedWallet,
-          blockNumber: receipt.blockNumber ? parseInt(receipt.blockNumber, 16) : null,
           explorerUrl,
           statusBadge: 'mismatch',
           summaryAr: 'المعاملة موجودة على BSC ولكنها لا تتضمن تحويل عملة USDT (BEP20) رسمية'
         };
       }
 
-      const recipientMatches =
-        matchedTransfer.toAddress === String(expectedWallet || '').trim().toLowerCase();
+      const recipientMatches = matchedTransfer.toAddress === cleanExpectedLower;
+      const feeTolerance = Math.max(2.0, Number(expectedAmount || 0) * 0.05);
       const amountMatches =
-        matchedTransfer.onChainAmount + 0.05 >= Number(expectedAmount || 0) &&
-        Math.abs(matchedTransfer.onChainAmount - Number(expectedAmount || 0)) <= 1.0;
-      const fullyVerified = txSuccess && recipientMatches && amountMatches;
+        Math.abs(matchedTransfer.onChainAmount - Number(expectedAmount || 0)) <= feeTolerance;
+      const ageHours = blockTimestampMs > 0 ? (Date.now() - blockTimestampMs) / 3600000 : 0;
+      const isFreshTx = !(maxAgeHours > 0 && blockTimestampMs > 0 && ageHours > maxAgeHours);
+      const fullyVerified = txSuccess && recipientMatches && amountMatches && isFreshTx;
 
-      let summaryAr = '';
-      if (fullyVerified) {
-        summaryAr = `تم التحقق بنجاح على BSC: تحويل مؤكد بقيمة $${matchedTransfer.onChainAmount.toFixed(
-          2
-        )} USDT إلى محفظة المنصة`;
-      } else if (!txSuccess) {
-        summaryAr = 'المعاملة مرفوضة/فاشلة على شبكة BSC';
-      } else if (!recipientMatches) {
-        summaryAr = `تنبيه: المستلم على الشبكة (${matchedTransfer.toAddress.slice(
-          0,
-          10
-        )}...) لا يطابق محفظة المنصة!`;
-      } else {
-        summaryAr = `تنبيه: المبلغ الفعلي على الشبكة ($${matchedTransfer.onChainAmount.toFixed(
-          2
-        )} USDT) يختلف عن المبلغ المدخل ($${Number(expectedAmount).toFixed(2)})`;
-      }
+      const summaryAr = fullyVerified
+        ? `تم التحقق بنجاح على BSC: تحويل مؤكد بقيمة $${matchedTransfer.onChainAmount.toFixed(2)} USDT إلى عنوان الإيداع الموحّد`
+        : !txSuccess
+        ? 'المعاملة مرفوضة/فاشلة على شبكة BSC'
+        : !recipientMatches
+        ? `عنوان المستلم في هذه المعاملة (${matchedTransfer.toAddress.slice(0, 10)}...) لا يطابق عنوان الإيداع الثابت للمنصة!`
+        : !isFreshTx
+        ? `هذه المعاملة قديمة على الشبكة (مضى عليها أكثر من ${maxAgeHours} ساعة) ولا يُسمح بإعادة استخدامها`
+        : `المبلغ الفعلي المستلم على الشبكة ($${matchedTransfer.onChainAmount.toFixed(2)} USDT) لا يطابق المبلغ المدخل ($${Number(expectedAmount || 0).toFixed(2)} USDT) — يرجى إدخال المبلغ الصافي الفعلي`;
 
       return {
         checkedAt: new Date().toISOString(),
@@ -426,19 +487,20 @@ async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
         isUsdtTransfer: true,
         recipientMatches,
         amountMatches,
+        isFreshTx,
+        blockTimestampMs: blockTimestampMs || null,
         fullyVerified,
         onChainAmount: matchedTransfer.onChainAmount,
         expectedAmount,
         fromAddress: matchedTransfer.fromAddress,
         toAddress: matchedTransfer.toAddress,
         expectedWallet,
-        blockNumber: receipt.blockNumber ? parseInt(receipt.blockNumber, 16) : null,
         explorerUrl,
-        statusBadge: fullyVerified ? 'verified' : 'mismatch',
+        statusBadge: fullyVerified ? 'verified' : !isFreshTx ? 'expired_tx' : 'mismatch',
         summaryAr
       };
     } catch {
-      // try fallback RPC
+      // try next RPC
     }
   }
 
@@ -452,6 +514,7 @@ async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
     isUsdtTransfer: false,
     recipientMatches: false,
     amountMatches: false,
+    isFreshTx: false,
     fullyVerified: false,
     onChainAmount: null,
     expectedAmount,
@@ -460,7 +523,7 @@ async function verifyBscBep20({ txid, expectedAmount, expectedWallet }) {
     expectedWallet,
     explorerUrl,
     statusBadge: 'network_error',
-    summaryAr: 'تعذر الاتصال المؤقت بعقدة BSC، يرجى إعادة الفحص بعد لحظات'
+    summaryAr: 'تعذر الاتصال المؤقت بعقدة BSC، تم حفظ الطلب للمراجعة الآلية'
   };
 }
 
@@ -468,16 +531,19 @@ async function verifyTransactionOnChain({
   txid,
   network = 'TRC20',
   expectedAmount = 0,
-  expectedWallet = ''
+  expectedWallet = '',
+  maxAgeHours = 72
 }) {
   if (network === 'BEP20') {
-    return verifyBscBep20({ txid, expectedAmount, expectedWallet });
+    return verifyBscBep20({ txid, expectedAmount, expectedWallet, maxAgeHours });
   }
-  return verifyTronTrc20({ txid, expectedAmount, expectedWallet });
+  return verifyTronTrc20({ txid, expectedAmount, expectedWallet, maxAgeHours });
 }
 
 module.exports = {
   tronHexToBase58,
+  extractTxHash64,
+  validateCryptoWalletFormat,
   TRON_USDT_CONTRACT,
   BSC_USDT_CONTRACT,
   verifyTransactionOnChain
