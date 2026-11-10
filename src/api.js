@@ -1,15 +1,23 @@
-import { handleStaticPagesApi } from './staticPagesFallback';
-
 const TOKEN_KEY = 'arona_boost_token';
-const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL
-  ? String(import.meta.env.VITE_API_BASE_URL)
-  : ''
-).replace(/\/$/, '');
+export const SUPABASE_CLOUD_API_BASE = 'https://pqzvkhwxarwwcsquhrea.supabase.co/functions/v1/arona-api';
 
-const IS_STANDALONE_GITHUB_PAGES =
-  typeof window !== 'undefined' &&
-  /\.github\.io$/i.test(window.location.hostname || '') &&
-  !API_BASE;
+function resolveApiBase() {
+  const envBase =
+    typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL
+      ? String(import.meta.env.VITE_API_BASE_URL).trim().replace(/\/$/, '')
+      : '';
+  if (envBase) return envBase;
+
+  if (typeof window !== 'undefined') {
+    const host = String(window.location.hostname || '').toLowerCase();
+    if (host.endsWith('.github.io') || host.endsWith('.pages.dev') || host.endsWith('.netlify.app')) {
+      return SUPABASE_CLOUD_API_BASE;
+    }
+  }
+  return '';
+}
+
+const API_BASE = resolveApiBase();
 
 export function getStoredToken() {
   try {
@@ -31,7 +39,7 @@ export function setStoredToken(token) {
   }
 }
 
-export async function apiRequest(endpoint, { method = 'GET', body, token, timeoutMs = 6000 } = {}) {
+export async function apiRequest(endpoint, { method = 'GET', body, token, timeoutMs = 18000 } = {}) {
   const activeToken = token !== undefined ? token : getStoredToken();
   const headers = {
     'Content-Type': 'application/json'
