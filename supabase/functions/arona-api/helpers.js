@@ -436,50 +436,19 @@ async function verifyTronTrc20({ txid, expectedAmount, expectedWallet, maxAgeHou
   let blockTimestampMs = 0;
   let hadRpcSuccess = false;
 
-  // Provider 1: TronGrid official HTTP API
+  // Provider 1: PublicNode TRON JSON-RPC (/jsonrpc) — fast single-call receipt + logs with no strict 1-rps rate limit
   try {
-    const [infoRes, txRes] = await Promise.all([
-      fetch('https://api.trongrid.io/wallet/gettransactioninfobyid', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: cleanHash }),
-        signal: AbortSignal.timeout(7000)
-      }),
-      fetch('https://api.trongrid.io/wallet/gettransactionbyid', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: cleanHash }),
-        signal: AbortSignal.timeout(7000)
-      })
-    ]);
-    if (infoRes.ok || txRes.ok) {
-      hadRpcSuccess = true;
-      const info = await infoRes.json().catch(() => ({}));
-      const tx = await txRes.json().catch(() => ({}));
-      if ((info && info.id) || (tx && tx.txID)) {
-        foundOnChain = true;
-        contractRet = info?.receipt?.result || tx?.ret?.[0]?.contractRet || 'UNKNOWN';
-        txSuccess = contractRet === 'SUCCESS';
-        logs = Array.isArray(info?.log) ? info.log : [];
-        blockTimestampMs = Number(info?.blockTimeStamp || tx?.raw_data?.timestamp || 0);
-      }
-    }
-  } catch {
-    // fallback to JSON-RPC node below
-  }
-
-  // Provider 2 Failover: PublicNode TRON JSON-RPC (/jsonrpc)
-  if (!foundOnChain) {
-    try {
-      const rpcRes = await fetch('https://tron-rpc.publicnode.com/jsonrpc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionReceipt', params: ['0x' + cleanHash] }),
-        signal: AbortSignal.timeout(7000)
-      });
-      if (rpcRes.ok) {
+    const rpcRes = await fetch('https://tron-rpc.publicnode.com/jsonrpc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionReceipt', params: ['0x' + cleanHash] }),
+      signal: AbortSignal.timeout(7000)
+    });
+    if (rpcRes.ok) {
+      const rpcJson = await rpcRes.json().catch(() => ({}));
+      if (!rpcJson?.error) {
         hadRpcSuccess = true;
-        const receipt = (await rpcRes.json().catch(() => ({})))?.result;
+        const receipt = rpcJson?.result;
         if (receipt) {
           foundOnChain = true;
           txSuccess = receipt.status === '0x1';
@@ -495,6 +464,40 @@ async function verifyTronTrc20({ txid, expectedAmount, expectedWallet, maxAgeHou
             const blk = blkRes ? (await blkRes.json().catch(() => ({})))?.result : null;
             if (blk?.timestamp) blockTimestampMs = parseInt(blk.timestamp, 16) * 1000;
           }
+        }
+      }
+    }
+  } catch {
+    // fallback to TronGrid below
+  }
+
+  // Provider 2 Failover: TronGrid official HTTP API (whenever receipt not found or logs missing)
+  if (!foundOnChain || logs.length === 0) {
+    try {
+      const [infoRes, txRes] = await Promise.all([
+        fetch('https://api.trongrid.io/wallet/gettransactioninfobyid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: cleanHash }),
+          signal: AbortSignal.timeout(7000)
+        }),
+        fetch('https://api.trongrid.io/wallet/gettransactionbyid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: cleanHash }),
+          signal: AbortSignal.timeout(7000)
+        })
+      ]);
+      if (infoRes.ok) {
+        const info = await infoRes.json().catch(() => ({}));
+        const tx = txRes.ok ? await txRes.json().catch(() => ({})) : {};
+        if (info && info.id) {
+          hadRpcSuccess = true;
+          foundOnChain = true;
+          contractRet = info?.receipt?.result || tx?.ret?.[0]?.contractRet || 'UNKNOWN';
+          txSuccess = contractRet === 'SUCCESS';
+          if (Array.isArray(info.log) && info.log.length > 0) logs = info.log;
+          if (!blockTimestampMs) blockTimestampMs = Number(info?.blockTimeStamp || tx?.raw_data?.timestamp || 0);
         }
       }
     } catch {
