@@ -8,7 +8,7 @@ import {
   Wifi,
   BatteryFull
 } from 'lucide-react';
-import { apiRequest, getStoredToken, setStoredToken } from './api';
+import { apiRequest, assetUrl, getStoredToken, setStoredToken } from './api';
 import { LanguageSwitcherPill, useI18n } from './i18n';
 import BrandLogo from './components/BrandLogo';
 import AuthScreen from './components/AuthScreen';
@@ -44,6 +44,7 @@ export default function App() {
   const [platformConfig, setPlatformConfig] = useState(null);
   const [publicConfig, setPublicConfig] = useState(null);
   const [clockText, setClockText] = useState(getClockText);
+  const [pwaPrompt, setPwaPrompt] = useState(null);
 
   const [activeTab, setActiveTab] = useState('home');
   const [earningsSubTab, setEarningsSubTab] = useState('guide');
@@ -86,12 +87,34 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Register PWA service worker safely (skip inside cross-origin preview iframes to avoid Safari SecurityError)
+  // Capture Android/Chrome native PWA install prompt
+  useEffect(() => {
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setPwaPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleTriggerPwaInstall = useCallback(async () => {
+    if (!pwaPrompt) return;
+    try {
+      pwaPrompt.prompt();
+      await pwaPrompt.userChoice;
+    } catch {
+      // ignore cancelled prompt
+    } finally {
+      setPwaPrompt(null);
+    }
+  }, [pwaPrompt]);
+
+  // Register PWA service worker safely with subpath-aware URL
   useEffect(() => {
     try {
       const inIframe = window.self !== window.top;
       if (!inIframe && 'serviceWorker' in navigator && navigator.serviceWorker) {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        navigator.serviceWorker.register(assetUrl('/sw.js')).catch(() => {});
       }
     } catch {
       // ignore iframe storage/SW restrictions
@@ -151,6 +174,11 @@ export default function App() {
     }, 20000);
     return () => clearInterval(poll);
   }, [user?.id]);
+
+  const handleUserUpdated = useCallback((nextUser, nextStats) => {
+    if (nextUser) setUser(nextUser);
+    if (nextStats) setTodayStats(nextStats);
+  }, []);
 
   const handleAuthSuccess = (authData) => {
     if (authData?.token) {
@@ -342,9 +370,13 @@ export default function App() {
                   vipLevels={vipLevels}
                   announcements={activeConfig.announcements}
                   liveTickerEnabled={activeConfig.liveTickerEnabled !== false}
+                  pwaPrompt={pwaPrompt}
+                  onTriggerPwaInstall={handleTriggerPwaInstall}
                   onOpenDeposit={handleOpenDeposit}
                   onOpenWithdraw={() => setWithdrawOpen(true)}
                   onOpenVault={() => setVaultOpen(true)}
+                  onOpenRedEnvelope={() => setRedEnvelopeOpen(true)}
+                  onOpenPointShop={() => setPointShopOpen(true)}
                   onOpenWheel={() => setWheelOpen(true)}
                   onOpenCharter={handleOpenCharter}
                   onOpenEarnings={(sub = 'guide') => {
@@ -352,7 +384,7 @@ export default function App() {
                     setActiveTab('earnings');
                   }}
                   onNavigateTab={setActiveTab}
-                  onUserUpdated={(u) => setUser(u)}
+                  onUserUpdated={handleUserUpdated}
                   showToast={showToast}
                 />
               )}
@@ -366,7 +398,7 @@ export default function App() {
                   onOpenDeposit={handleOpenDeposit}
                   onOpenCharter={() => handleOpenCharter('charter')}
                   onNavigateTab={setActiveTab}
-                  onUserUpdated={(u) => setUser(u)}
+                  onUserUpdated={handleUserUpdated}
                   showToast={showToast}
                 />
               )}
@@ -374,9 +406,13 @@ export default function App() {
               {activeTab === 'tasks' && (
                 <TasksTab
                   user={user}
-                  onUserUpdated={(u) => {
-                    setUser(u);
+                  onUserUpdated={(u, stats) => {
+                    handleUserUpdated(u, stats);
                     fetchSession();
+                  }}
+                  onOpenGrades={() => {
+                    setEarningsSubTab('grades');
+                    setActiveTab('earnings');
                   }}
                   onNavigateTab={setActiveTab}
                   onNavigateHome={() => setActiveTab('home')}
@@ -387,7 +423,7 @@ export default function App() {
               {activeTab === 'team' && (
                 <TeamTab
                   user={user}
-                  onUserUpdated={(u) => setUser(u)}
+                  onUserUpdated={handleUserUpdated}
                   showToast={showToast}
                 />
               )}
@@ -407,7 +443,7 @@ export default function App() {
                   onOpenCharter={handleOpenCharter}
                   onOpenConcierge={() => setConciergeOpen(true)}
                   onOpenAdmin={() => setAdminOpen(true)}
-                  onUserUpdated={(u) => setUser(u)}
+                  onUserUpdated={handleUserUpdated}
                   onLogout={handleLogout}
                   showToast={showToast}
                 />
@@ -442,7 +478,7 @@ export default function App() {
               onClose={() => setWithdrawOpen(false)}
               onOpenRecords={(tab = 'ledger') => setRecordsSheet({ open: true, tab })}
               onSuccess={handleTransactionCompleted}
-              onUserUpdated={(u) => setUser(u)}
+              onUserUpdated={handleUserUpdated}
               showToast={showToast}
             />
 
@@ -469,7 +505,7 @@ export default function App() {
             <RedEnvelopeSheet
               isOpen={redEnvelopeOpen}
               onClose={() => setRedEnvelopeOpen(false)}
-              onUserUpdated={(u) => setUser(u)}
+              onUserUpdated={handleUserUpdated}
               showToast={showToast}
             />
 
@@ -478,7 +514,7 @@ export default function App() {
               isOpen={pointShopOpen}
               user={user}
               onClose={() => setPointShopOpen(false)}
-              onUserUpdated={(u) => setUser(u)}
+              onUserUpdated={handleUserUpdated}
               showToast={showToast}
             />
 
@@ -494,7 +530,7 @@ export default function App() {
             <NotificationsSheet
               isOpen={notifOpen}
               onClose={() => setNotifOpen(false)}
-              onUserUpdated={(u) => setUser(u)}
+              onUserUpdated={handleUserUpdated}
               showToast={showToast}
             />
 
@@ -503,7 +539,7 @@ export default function App() {
               isOpen={vaultOpen}
               onClose={() => setVaultOpen(false)}
               user={user}
-              onUserUpdated={(u) => setUser(u)}
+              onUserUpdated={handleUserUpdated}
               showToast={showToast}
             />
 
@@ -512,7 +548,7 @@ export default function App() {
               isOpen={wheelOpen}
               onClose={() => setWheelOpen(false)}
               user={user}
-              onUserUpdated={(u) => setUser(u)}
+              onUserUpdated={handleUserUpdated}
               onOpenDeposit={handleOpenDeposit}
               showToast={showToast}
             />

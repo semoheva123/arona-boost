@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { assetUrl } from '../api';
 
 export default function LivePhotoReel({
   images = [],
@@ -13,28 +14,34 @@ export default function LivePhotoReel({
   onActiveImageChange,
   children
 }) {
+  const safeFallback = assetUrl(fallbackImage || '/destinations/dest-1.jpg');
   const [failedSet, setFailedSet] = useState(() => new Set());
   const [activeIndex, setActiveIndex] = useState(0);
   const [started, setStarted] = useState(staggerDelayMs === 0);
   const [paused, setPaused] = useState(false);
   const touchStartX = useRef(null);
 
+  const normalizedImages = useMemo(
+    () => (Array.isArray(images) ? images.map((u) => assetUrl(u)).filter(Boolean) : []),
+    [images]
+  );
+
   // Reset failedSet & index if images identity changes
-  const gallerySignature = Array.isArray(images) ? images.join('|') : '';
+  const gallerySignature = normalizedImages.join('|');
   useEffect(() => {
     setFailedSet(new Set());
     setActiveIndex(0);
   }, [gallerySignature]);
 
   const validImages = useMemo(() => {
-    const raw = Array.isArray(images) && images.length > 0 ? images : [fallbackImage];
+    const raw = normalizedImages.length > 0 ? normalizedImages : [safeFallback];
     const filtered = raw.filter((u) => u && !failedSet.has(u));
     if (filtered.length > 0) return filtered;
-    return [fallbackImage];
-  }, [images, fallbackImage, failedSet]);
+    return [safeFallback];
+  }, [normalizedImages, safeFallback, failedSet]);
 
   const safeIndex = activeIndex % validImages.length;
-  const currentSrc = validImages[safeIndex] || fallbackImage;
+  const currentSrc = validImages[safeIndex] || safeFallback;
 
   useEffect(() => {
     if (onActiveImageChange) {
@@ -68,7 +75,7 @@ export default function LivePhotoReel({
   }, [started, paused, validImages.length, intervalMs]);
 
   const handleImgError = (badUrl) => {
-    if (badUrl === fallbackImage) return;
+    if (badUrl === safeFallback) return;
     setFailedSet((prev) => {
       const next = new Set(prev);
       next.add(badUrl);
@@ -111,10 +118,8 @@ export default function LivePhotoReel({
       onTouchEnd={handleTouchEnd}
       className={`relative w-full ${heightClass} bg-slate-900 overflow-hidden select-none`}
     >
-      {/* Cross-fading + Ken Burns animated image stack */}
       {validImages.map((src, idx) => {
         const isCurrent = idx === safeIndex;
-        // Only render active and adjacent slides to keep DOM super light
         const isNeighbor =
           idx === (safeIndex + 1) % validImages.length ||
           idx === (safeIndex - 1 + validImages.length) % validImages.length;
@@ -133,10 +138,8 @@ export default function LivePhotoReel({
         );
       })}
 
-      {/* Rich cinematic vignette for crisp overlaid Arabic text */}
       <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-slate-950/80 via-slate-900/15 to-slate-950/40" />
 
-      {/* Top Animated Story Progress Bars */}
       {showStoryBars && validImages.length > 1 && (
         <div
           className="absolute top-2 inset-x-3 z-[4] flex items-center gap-1"
@@ -173,7 +176,6 @@ export default function LivePhotoReel({
         </div>
       )}
 
-      {/* Optional Prev/Next Navigation Controls */}
       {showNavArrows && validImages.length > 1 && (
         <>
           <button
@@ -195,7 +197,6 @@ export default function LivePhotoReel({
         </>
       )}
 
-      {/* Overlaid Content Slot */}
       <div className="relative z-[3] w-full h-full">{children}</div>
     </div>
   );

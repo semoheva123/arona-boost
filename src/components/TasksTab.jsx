@@ -21,7 +21,7 @@ import {
   ChevronLeft,
   Globe2
 } from 'lucide-react';
-import { apiRequest, formatUsdt, formatDateTimeAr } from '../api';
+import { apiRequest, assetUrl, formatUsdt, formatDateTimeAr } from '../api';
 import HospitalityCoverageModal from './HospitalityCoverageModal';
 
 // Sector-tailored 3-axis criteria, tags, badges & CTAs for Resorts, Hotels & Tourist Landmarks
@@ -175,7 +175,9 @@ function StarRow({ count = 5, size = 'w-3.5 h-3.5' }) {
 }
 
 function DestinationSlideBanner({ gallery = [], fallbackImage, alt, children }) {
-  const validSlides = gallery.length > 0 ? gallery : [fallbackImage || '/destinations/dest-1.jpg'];
+  const safeFallback = assetUrl(fallbackImage || '/destinations/dest-1.jpg');
+  const validSlides =
+    gallery.length > 0 ? gallery.map((u) => assetUrl(u)).filter(Boolean) : [safeFallback];
   const [slideIdx, setSlideIdx] = useState(0);
 
   useEffect(() => {
@@ -190,7 +192,7 @@ function DestinationSlideBanner({ gallery = [], fallbackImage, alt, children }) 
     return () => clearInterval(timer);
   }, [validSlides.length]);
 
-  const currentSrc = validSlides[slideIdx % validSlides.length] || fallbackImage;
+  const currentSrc = validSlides[slideIdx % validSlides.length] || safeFallback;
 
   return (
     <div className="relative h-46 w-full overflow-hidden bg-slate-900">
@@ -200,8 +202,9 @@ function DestinationSlideBanner({ gallery = [], fallbackImage, alt, children }) 
         alt={alt}
         loading="lazy"
         onError={(e) => {
-          if (fallbackImage && e.currentTarget.src !== window.location.origin + fallbackImage) {
-            e.currentTarget.src = fallbackImage;
+          if (safeFallback && e.currentTarget.src !== safeFallback && !e.currentTarget.dataset.fb) {
+            e.currentTarget.dataset.fb = '1';
+            e.currentTarget.src = safeFallback;
           }
         }}
         className="w-full h-full object-cover transition-all duration-700 scale-[1.01]"
@@ -234,7 +237,14 @@ function DestinationSlideBanner({ gallery = [], fallbackImage, alt, children }) 
   );
 }
 
-export default function TasksTab({ user, onUserUpdated, onNavigateTab, onNavigateHome, showToast }) {
+export default function TasksTab({
+  user,
+  onUserUpdated,
+  onOpenGrades,
+  onNavigateTab,
+  onNavigateHome,
+  showToast
+}) {
   const [taskData, setTaskData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshingLive, setRefreshingLive] = useState(false);
@@ -404,7 +414,8 @@ export default function TasksTab({ user, onUserUpdated, onNavigateTab, onNavigat
   const ActiveModalIcon = activeModalSector.Icon;
 
   const goHomeForUpgrade = () => {
-    if (onNavigateTab) onNavigateTab('home');
+    if (onOpenGrades) onOpenGrades();
+    else if (onNavigateTab) onNavigateTab('earnings');
     else if (onNavigateHome) onNavigateHome();
   };
 
@@ -621,6 +632,14 @@ export default function TasksTab({ user, onUserUpdated, onNavigateTab, onNavigat
 
               <div className="space-y-2.5">
                 {taskData.flashMissions.map((fm) => {
+                  const minVipReq = fm.minVip ?? fm.minVipLevel ?? 1;
+                  const remainingClaims = fm.remainingClaims ?? fm.remainingSlots ?? 0;
+                  const completedByUser = Boolean(fm.completedByUser ?? fm.alreadyClaimed);
+                  const eligibleVip = Boolean(
+                    fm.eligibleVip ?? fm.isVipQualified ?? (user?.vipLevel ?? 0) >= minVipReq
+                  );
+                  const soldOut = Boolean(fm.soldOut ?? fm.isSoldOut ?? remainingClaims <= 0);
+                  const fmImg = assetUrl(fm.imageUrl || '/destinations/dest-7.jpg');
                   const usedPct = Math.min(
                     100,
                     Math.round((fm.claimedCount / Math.max(1, fm.maxClaims)) * 100)
@@ -633,14 +652,21 @@ export default function TasksTab({ user, onUserUpdated, onNavigateTab, onNavigat
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-2.5 min-w-0">
                           <img
-                            src={fm.imageUrl || '/destinations/dest-7.jpg'}
+                            src={fmImg}
                             alt={fm.title}
+                            onError={(e) => {
+                              const fb = assetUrl('/destinations/dest-7.jpg');
+                              if (e.currentTarget.src !== fb && !e.currentTarget.dataset.fb) {
+                                e.currentTarget.dataset.fb = '1';
+                                e.currentTarget.src = fb;
+                              }
+                            }}
                             className="w-14 h-14 rounded-xl object-cover shrink-0 border border-slate-200"
                           />
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="rounded-md bg-slate-900 text-[#F5D076] px-1.5 py-0.5 text-[10px] font-bold">
-                                الفئة A{fm.minVip}+
+                                الفئة A{minVipReq}+
                               </span>
                               <span className="text-[11px] font-bold text-slate-500 truncate">
                                 {fm.location}
@@ -652,7 +678,7 @@ export default function TasksTab({ user, onUserUpdated, onNavigateTab, onNavigat
                             <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 font-semibold">
                               <span className="inline-flex items-center gap-1">
                                 <Users className="w-3 h-3 text-amber-600" />
-                                متبقي {fm.remainingClaims} من {fm.maxClaims} مقعد
+                                متبقي {remainingClaims} من {fm.maxClaims} مقعد
                               </span>
                             </div>
                           </div>
@@ -673,20 +699,20 @@ export default function TasksTab({ user, onUserUpdated, onNavigateTab, onNavigat
                       </div>
 
                       <div className="flex justify-end">
-                        {fm.completedByUser ? (
+                        {completedByUser ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             تم توثيق التقرير الاستثنائي
                           </span>
-                        ) : !fm.eligibleVip ? (
+                        ) : !eligibleVip ? (
                           <button
                             type="button"
                             onClick={goHomeForUpgrade}
                             className="rounded-xl bg-slate-100 text-slate-600 px-3 py-1.5 text-[11px] font-bold cursor-pointer"
                           >
-                            يتطلب الفئة A{fm.minVip}
+                            يتطلب الفئة A{minVipReq}
                           </button>
-                        ) : fm.soldOut ? (
+                        ) : soldOut ? (
                           <span className="text-[11px] font-bold text-slate-400">اكتمل العدد</span>
                         ) : (
                           <button
@@ -696,8 +722,9 @@ export default function TasksTab({ user, onUserUpdated, onNavigateTab, onNavigat
                                 id: fm.id,
                                 title: fm.title,
                                 location: fm.location,
-                                image: fm.imageUrl || '/destinations/dest-7.jpg',
-                                fallbackImage: '/destinations/dest-7.jpg',
+                                category: fm.category || 'عقد استثنائي محدود',
+                                image: fmImg,
+                                fallbackImage: assetUrl('/destinations/dest-7.jpg'),
                                 reward: fm.reward,
                                 avgRating: 5.0,
                                 isFlashMission: true
@@ -893,10 +920,14 @@ export default function TasksTab({ user, onUserUpdated, onNavigateTab, onNavigat
                 <div key={h.id} className="py-3.5 first:pt-0 last:pb-0 flex items-start gap-3">
                   {h.imageUrl ? (
                     <img
-                      src={h.imageUrl}
+                      src={assetUrl(h.imageUrl)}
                       alt={h.title}
                       onError={(e) => {
-                        e.currentTarget.src = '/destinations/dest-1.jpg';
+                        const fb = assetUrl('/destinations/dest-1.jpg');
+                        if (e.currentTarget.src !== fb && !e.currentTarget.dataset.fb) {
+                          e.currentTarget.dataset.fb = '1';
+                          e.currentTarget.src = fb;
+                        }
                       }}
                       className="w-14 h-14 rounded-2xl object-cover shrink-0 border border-slate-200/80"
                     />
@@ -951,10 +982,14 @@ export default function TasksTab({ user, onUserUpdated, onNavigateTab, onNavigat
             {/* Top Luxury Scenic Banner */}
             <div className="relative h-54 w-full overflow-hidden bg-slate-900">
               <img
-                src={activeModalImage || ratingTarget.image || ratingTarget.fallbackImage}
+                src={assetUrl(activeModalImage || ratingTarget.image || ratingTarget.fallbackImage)}
                 alt={ratingTarget.title}
                 onError={(e) => {
-                  e.currentTarget.src = ratingTarget.fallbackImage || '/destinations/dest-1.jpg';
+                  const fb = assetUrl(ratingTarget.fallbackImage || '/destinations/dest-1.jpg');
+                  if (e.currentTarget.src !== fb && !e.currentTarget.dataset.fb) {
+                    e.currentTarget.dataset.fb = '1';
+                    e.currentTarget.src = fb;
+                  }
                 }}
                 className="w-full h-full object-cover"
               />

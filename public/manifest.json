@@ -1,17 +1,18 @@
 {
   "name": "Arona Boost",
   "short_name": "Arona Boost",
-  "description": "Arona Boost — تقييم الوجهات السياحية والعوائد اليومية الرقمية",
-  "start_url": "/",
+  "description": "Arona Boost — تقييم المنتجعات والفنادق والمعالم السياحية والعوائد اليومية الرقمية",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "dir": "rtl",
   "lang": "ar",
-  "background_color": "#F5F7FA",
-  "theme_color": "#0B2742",
+  "background_color": "#EFF3F8",
+  "theme_color": "#07182B",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "./icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

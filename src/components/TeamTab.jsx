@@ -17,7 +17,7 @@ import {
   Eye,
   X
 } from 'lucide-react';
-import { apiRequest, formatUsdt, formatShortDateAr, formatDateTimeAr } from '../api';
+import { apiRequest, buildAppUrl, formatUsdt, formatShortDateAr, formatDateTimeAr } from '../api';
 
 export default function TeamTab({ user, onUserUpdated, showToast }) {
   const [teamData, setTeamData] = useState(null);
@@ -45,10 +45,7 @@ export default function TeamTab({ user, onUserUpdated, showToast }) {
   }, [loadTeam]);
 
   const inviteCode = teamData?.inviteCode || user?.inviteCode || '';
-  const referralUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/?ref=${inviteCode}`
-      : `/?ref=${inviteCode}`;
+  const referralUrl = buildAppUrl(`?ref=${inviteCode}`);
 
   const copyText = async (text, key, msg) => {
     try {

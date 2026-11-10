@@ -4,7 +4,7 @@ import { handleAdminRoutes } from './adminRoutes.js';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey'
 };
 
@@ -31,9 +31,10 @@ function rewriteMediaValue(val, functionBase, frontendBase) {
 
 function jsonResponse(status, data, req, envFnBase) {
   const origin = String(req.headers.get('origin') || req.headers.get('referer') || '');
-  const frontendBase = origin.includes('semoheva123.github.io')
-    ? 'https://semoheva123.github.io/arona-boost'
-    : '';
+  const frontendBase =
+    !origin || origin.includes('semoheva123.github.io')
+      ? 'https://semoheva123.github.io/arona-boost'
+      : '';
   const rewritten = rewriteMediaValue(data, envFnBase, frontendBase);
   return new Response(JSON.stringify(rewritten), {
     status,
@@ -58,7 +59,7 @@ function parseDeviceLabel(uaRaw = '') {
   if (/Edg\//i.test(ua)) browser = 'Edge';
   else if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) browser = 'Chrome';
   else if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) browser = 'Safari';
-  else if (/Firefox\//i.test(ua)) browser = 'Firefox';
+  else if (/Firefox/i.test(ua)) browser = 'Firefox';
 
   return `${os} • ${browser}`;
 }
@@ -73,17 +74,19 @@ function maskClientIp(req) {
 }
 
 function isPublicRoute(method, path) {
+  const isRead = method === 'GET' || method === 'HEAD';
   if (
-    method === 'GET' &&
+    isRead &&
     (path === '/api/health' ||
       path === '/api/public-config' ||
       path === '/api/live-activity' ||
+      path === '/api/activity-feed' ||
       path === '/api/live-image' ||
       path === '/api/transparency-metrics')
   ) {
     return true;
   }
-  if (method === 'GET' && path.startsWith('/api/public/referrer/')) return true;
+  if (isRead && path.startsWith('/api/public/referrer/')) return true;
   if (method === 'POST' && (path === '/api/validate-phone' || path === '/api/auth/register' || path === '/api/auth/login')) {
     return true;
   }
@@ -116,8 +119,18 @@ export function createEdgeHandler(deps, envGet) {
       if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
       const method = req.method.toUpperCase();
 
-      if (method === 'GET' && (path === '/' || path === '/api/health')) {
+      if ((method === 'GET' || method === 'HEAD') && (path === '/' || path === '/api/health')) {
         return jsonResponse(200, { ok: true, service: 'arona-boost-supabase-api', schema: 'arona_boost' }, req, fnBase);
+      }
+
+      if ((method === 'GET' || method === 'HEAD') && path === '/api/live-image') {
+        const userRes = await handleUserRoutes({ sql, method: 'GET', path, url, body: {}, user: null, tokenSig: null, jwtSecret });
+        if (userRes instanceof Response) {
+          if (method === 'HEAD') {
+            return new Response(null, { status: userRes.status, headers: userRes.headers });
+          }
+          return userRes;
+        }
       }
 
       let body = {};
@@ -147,30 +160,48 @@ export function createEdgeHandler(deps, envGet) {
         } catch {
           return jsonResponse(401, { error: 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول' }, req, fnBase);
         }
-        const [foundUser] = await sql`SELECT * FROM arona_boost.users WHERE id = ${Number(decoded.userId)} LIMIT 1`;
+
+        tokenSig = token.slice(-20);
+        // Combined single DB round-trip for user + session check
+        const [foundUser] = await sql`
+          SELECT u.*,
+                 s.id AS "_sess_id",
+                 s.is_revoked AS "_sess_revoked",
+                 s.last_seen_at AS "_sess_last_seen"
+          FROM arona_boost.users u
+          LEFT JOIN arona_boost.user_sessions s
+            ON s.user_id = u.id AND s.token_sig = ${tokenSig}
+          WHERE u.id = ${Number(decoded.userId)}
+          LIMIT 1
+        `;
         if (!foundUser) {
           return jsonResponse(401, { error: 'الجلسة غير صالحة، يرجى تسجيل الدخول مجدداً' }, req, fnBase);
         }
         if (foundUser.is_banned && !foundUser.is_admin) {
           return jsonResponse(403, { error: 'هذا الحساب مجمّد مؤقتاً من الإدارة، يرجى التواصل مع الدعم عبر واتساب' }, req, fnBase);
         }
-
-        tokenSig = token.slice(-20);
-        const [sessRow] = await sql`
-          SELECT id, is_revoked FROM arona_boost.user_sessions
-          WHERE user_id = ${foundUser.id} AND token_sig = ${tokenSig} LIMIT 1
-        `;
-        if (sessRow && sessRow.is_revoked) {
+        if (foundUser._sess_id && foundUser._sess_revoked) {
           return jsonResponse(401, { error: 'تم إنهاء هذه الجلسة من مركز الحماية المصرفية، يرجى تسجيل الدخول مجدداً' }, req, fnBase);
         }
-        if (!sessRow) {
+
+        if (!foundUser._sess_id) {
           await sql`
             INSERT INTO arona_boost.user_sessions (user_id, token_sig, device_label, ip_hint)
             VALUES (${foundUser.id}, ${tokenSig}, ${parseDeviceLabel(req.headers.get('user-agent'))}, ${maskClientIp(req)})
             ON CONFLICT (user_id, token_sig) DO NOTHING
           `;
         } else {
-          await sql`UPDATE arona_boost.user_sessions SET last_seen_at = ${nowUtcStr()} WHERE id = ${sessRow.id}`;
+          const lastMs = foundUser._sess_last_seen
+            ? new Date(String(foundUser._sess_last_seen).replace(' ', 'T') + 'Z').getTime()
+            : 0;
+          if (!lastMs || Date.now() - lastMs > 90000) {
+            const p = sql`UPDATE arona_boost.user_sessions SET last_seen_at = ${nowUtcStr()} WHERE id = ${foundUser._sess_id}`.catch(() => {});
+            if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) {
+              EdgeRuntime.waitUntil(p);
+            } else {
+              await p;
+            }
+          }
         }
         user = foundUser;
       }

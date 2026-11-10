@@ -13,6 +13,8 @@ import { apiRequest, formatUsdt } from '../api';
 export default function VipLevelsSection({
   user,
   vipLevels = [],
+  onBack,
+  onOpenDeposit,
   onOpenDepositWithAmount,
   onNavigateTab,
   onUserUpdated,
@@ -33,7 +35,7 @@ export default function VipLevelsSection({
           method: 'POST',
           body: { level: tier.level }
         });
-        onUserUpdated(res.user, res.todayStats);
+        if (onUserUpdated) onUserUpdated(res.user, res.todayStats);
         showToast(res.message);
       } catch (err) {
         showToast(err.message, 'error');
@@ -42,12 +44,22 @@ export default function VipLevelsSection({
       }
     } else {
       const remaining = Math.max(10, Math.ceil(tier.minDeposit - (user?.totalDeposits || 0)));
-      onOpenDepositWithAmount(remaining, tier);
+      const openDep = onOpenDepositWithAmount || onOpenDeposit;
+      if (openDep) openDep(remaining, tier);
     }
   };
 
   return (
     <section id="vip-levels-section" className="space-y-3.5">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-1.5 text-xs font-extrabold text-[#07182B] hover:bg-slate-50 shadow-2xs cursor-pointer"
+        >
+          <span>← العودة إلى الرئيسية</span>
+        </button>
+      )}
       {/* Section Header */}
       <div className="flex items-center justify-between gap-2">
         <div>

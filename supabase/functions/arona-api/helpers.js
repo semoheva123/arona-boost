@@ -1158,15 +1158,47 @@ async function fetchWikimediaPhotosForQuery(searchQuery) {
   }
 }
 
+const LOCAL_DEST_POOL = [
+  '/destinations/dest-1.jpg',
+  '/destinations/dest-2.jpg',
+  '/destinations/dest-3.jpg',
+  '/destinations/dest-4.jpg',
+  '/destinations/dest-5.jpg',
+  '/destinations/dest-6.jpg',
+  '/destinations/dest-7.jpg',
+  '/destinations/dest-8.jpg',
+  '/destinations/dest-9.jpg',
+  '/destinations/dest-10.jpg'
+];
+
 async function buildLiveGalleryForDestination(dest, rotationSeed = 0) {
   const now = Date.now();
+  const pendingPromises = [];
   const queryResults = dest.queries.map((q) => {
     const cached = queryGalleryCache.get(q);
     if (!cached || now - cached.fetchedAt >= 45 * 60 * 1000) {
-      fetchWikimediaPhotosForQuery(q).catch(() => {});
+      const p = fetchWikimediaPhotosForQuery(q).catch(() => []);
+      pendingPromises.push(p);
+      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) {
+        EdgeRuntime.waitUntil(p);
+      }
     }
     return cached?.urls || [];
   });
+
+  // If cold cache, give Wikimedia up to 850ms to return live imagery right away without delaying UI
+  if (queryResults.every((r) => r.length === 0) && pendingPromises.length > 0) {
+    const quick = await Promise.race([
+      Promise.all(pendingPromises),
+      new Promise((resolve) => setTimeout(() => resolve(null), 850))
+    ]);
+    if (Array.isArray(quick)) {
+      quick.forEach((urls, idx) => {
+        if (Array.isArray(urls) && urls.length > 0) queryResults[idx] = urls;
+      });
+    }
+  }
+
   const combined = [];
   const maxLen = Math.max(0, ...queryResults.map((r) => r.length));
   for (let i = 0; i < maxLen; i++) {
@@ -1176,7 +1208,17 @@ async function buildLiveGalleryForDestination(dest, rotationSeed = 0) {
   }
   const timeBucket = Math.floor(Date.now() / 45000) + Number(rotationSeed || 0);
   const rotatedLive = shuffleWithSeed(combined, timeBucket + dest.key.length * 97).slice(0, 4);
-  return [dest.fallbackImage, ...rotatedLive.filter((u) => u !== dest.fallbackImage)];
+
+  if (rotatedLive.length >= 2) {
+    return [rotatedLive[0], dest.fallbackImage, ...rotatedLive.slice(1)];
+  }
+
+  // Multi-angle curated local backup gallery so sliders always have >= 3 rotating crisp photos
+  const extraLocal = shuffleWithSeed(
+    LOCAL_DEST_POOL.filter((p) => p !== dest.fallbackImage),
+    timeBucket + dest.key.length * 41
+  ).slice(0, 2);
+  return [dest.fallbackImage, ...rotatedLive, ...extraLocal];
 }
 
 export async function getDynamicDestinationsForSlots(slotCount, completedMap, rotationSeed = 0) {

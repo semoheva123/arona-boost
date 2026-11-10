@@ -51,7 +51,7 @@ jobs:
             if (base !== "/") {
               const fixFile = (p) => {
                 let s = fs.readFileSync(p, "utf8");
-                s = s.replace(/(["\x27])\/(corporate|destinations|sw\.js|manifest\.json|icon\.svg)/g, `$1${base}$2`);
+                s = s.replace(/(["\x27`])\/(corporate|destinations|sw\.js|manifest\.json|icon\.svg)/g, `$1${base}$2`);
                 fs.writeFileSync(p, s);
               };
               fixFile("pages_dist/index.html");

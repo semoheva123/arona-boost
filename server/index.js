@@ -1599,13 +1599,19 @@ app.get('/api/tasks', authMiddleware, async (req, res) => {
       const remainingSlots = Math.max(0, fm.maxClaims - fm.claimedCount);
       const alreadyClaimed = myFlashClaims.has(fm.id);
       const isVipQualified = serialized.vipLevel >= fm.minVipLevel;
+      const isSoldOut = remainingSlots <= 0;
       return {
         ...fm,
         reward: round2(fm.reward),
+        minVip: fm.minVipLevel,
         remainingSlots,
+        remainingClaims: remainingSlots,
         alreadyClaimed,
+        completedByUser: alreadyClaimed,
         isVipQualified,
-        isSoldOut: remainingSlots <= 0
+        eligibleVip: isVipQualified,
+        isSoldOut,
+        soldOut: isSoldOut
       };
     });
 

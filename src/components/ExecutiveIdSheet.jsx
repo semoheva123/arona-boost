@@ -12,7 +12,7 @@ import {
   IdCard
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
-import { formatUsdt, formatShortDateAr } from '../api';
+import { formatUsdt, formatShortDateAr, buildAppUrl } from '../api';
 
 // Deterministic crisp QR-like matrix SVG from a string seed (100% offline/sandbox safe)
 function VerificationQrMatrix({ seed = 'ARONA', size = 68 }) {
@@ -96,10 +96,7 @@ export default function ExecutiveIdSheet({
     ? String(user.workGuarantee.expiresDate).slice(0, 10)
     : `بعد ${guaranteeDurationDays} يوماً`;
 
-  const referralUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/?ref=${user.inviteCode || 'ARONA'}`
-      : `/?ref=${user.inviteCode || 'ARONA'}`;
+  const referralUrl = buildAppUrl(`?ref=${user.inviteCode || 'ARONA'}`);
 
   const handleDownloadPng = async () => {
     setDownloading(true);

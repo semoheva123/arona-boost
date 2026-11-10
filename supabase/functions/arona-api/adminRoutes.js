@@ -203,7 +203,10 @@ export async function handleAdminRoutes({ sql, method, path, url, body, user }) 
     return {
       status: 200,
       json: {
-        settings,
+        settings: {
+          support_telegram: '',
+          ...settings
+        },
         vipLevels: parseVipLevels(settings),
         vaultPlans: parseVaultPlans(settings),
         wheelSegments: parseWheelSegments(settings),

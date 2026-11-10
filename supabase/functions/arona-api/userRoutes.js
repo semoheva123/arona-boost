@@ -1010,81 +1010,95 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
   }
 
   if (method === 'GET' && path === '/api/tasks') {
-    const settings = await getSettingsMap(sql);
+    const today = getTodayDateStr();
+    const nowStr = nowUtcStr();
+    const seed = Number(url.searchParams.get('seed') || 0);
+
+    const [settings, todayCompletions, history, rawFlash, myClaimsRows] = await Promise.all([
+      getSettingsMap(sql),
+      sql`
+        SELECT task_slot, task_title, location, image_url, reward, rating, review_tags, review_comment, created_at
+        FROM arona_boost.task_completions
+        WHERE user_id = ${user.id} AND completed_date = ${today}
+      `,
+      sql`
+        SELECT id, task_slot AS slot, task_title AS title, vip_level AS "vipLevel",
+               reward, rating, review_tags AS "reviewTags", review_comment AS "reviewComment",
+               location, image_url AS "imageUrl", completed_date AS "completedDate", created_at AS "createdAt"
+        FROM arona_boost.task_completions
+        WHERE user_id = ${user.id}
+        ORDER BY id DESC LIMIT 30
+      `,
+      sql`
+        SELECT id, title, location, category, description, image_url AS "imageUrl",
+               reward, min_vip_level AS "minVipLevel", max_claims AS "maxClaims",
+               claimed_count AS "claimedCount", expires_at AS "expiresAt"
+        FROM arona_boost.flash_missions
+        WHERE is_active = 1 AND expires_at > ${nowStr}
+        ORDER BY id DESC
+      `,
+      sql`SELECT mission_id FROM arona_boost.flash_mission_claims WHERE user_id = ${user.id}`
+    ]);
+
     const levels = parseVipLevels(settings);
     const serialized = await serializeUser(sql, user, settings);
     const currentVip = levels.find((v) => v.level === serialized.vipLevel) || levels[0];
     const nextVip = levels.find((v) => v.level === serialized.vipLevel + 1) || null;
-    const today = getTodayDateStr();
-    const seed = Number(url.searchParams.get('seed') || 0);
 
-    const todayCompletions = await sql`
-      SELECT task_slot, task_title, location, image_url, reward, rating, review_tags, review_comment, created_at
-      FROM arona_boost.task_completions
-      WHERE user_id = ${user.id} AND completed_date = ${today}
-    `;
     const completedMap = new Map();
     for (const c of todayCompletions) completedMap.set(c.task_slot, c);
 
-    const dynamicSlots = await getDynamicDestinationsForSlots(currentVip.dailyTasks, completedMap, seed + user.id);
+    const [dynamicSlots, previewList, todayStats] = await Promise.all([
+      getDynamicDestinationsForSlots(currentVip.dailyTasks, completedMap, seed + user.id),
+      nextVip ? getFeaturedDestinationsShowcase(seed + 77) : Promise.resolve([]),
+      getTodayStats(sql, user.id, serialized.vipLevel, levels)
+    ]);
+
     const activeTasks = dynamicSlots.map((item) => ({
       ...item,
       vipRequired: currentVip.level,
       reward: currentVip.rewardPerTask
     }));
 
-    let lockedPreviewTasks = [];
-    if (nextVip) {
-      const previewList = await getFeaturedDestinationsShowcase(seed + 77);
-      lockedPreviewTasks = previewList.slice(0, 2).map((item, idx) => ({
-        slot: currentVip.dailyTasks + idx + 1,
-        key: item.key,
-        sectorType: item.sectorType || 'landmark',
-        sectorBadge: item.sectorBadge || 'عقد تقييم سياحي',
-        codePrefix: item.codePrefix || '#AB',
-        title: item.title,
-        location: item.location,
-        category: item.category,
-        image: item.image,
-        fallbackImage: item.fallbackImage,
-        gallery: item.gallery,
-        avgRating: item.avgRating,
-        vipRequired: nextVip.level,
-        vipName: nextVip.name,
-        reward: nextVip.rewardPerTask,
-        locked: true
-      }));
-    }
+    const lockedPreviewTasks = nextVip
+      ? previewList.slice(0, 2).map((item, idx) => ({
+          slot: currentVip.dailyTasks + idx + 1,
+          key: item.key,
+          sectorType: item.sectorType || 'landmark',
+          sectorBadge: item.sectorBadge || 'عقد تقييم سياحي',
+          codePrefix: item.codePrefix || '#AB',
+          title: item.title,
+          location: item.location,
+          category: item.category,
+          image: item.image,
+          fallbackImage: item.fallbackImage,
+          gallery: item.gallery,
+          avgRating: item.avgRating,
+          vipRequired: nextVip.level,
+          vipName: nextVip.name,
+          reward: nextVip.rewardPerTask,
+          locked: true
+        }))
+      : [];
 
-    const history = await sql`
-      SELECT id, task_slot AS slot, task_title AS title, vip_level AS "vipLevel",
-             reward, rating, review_tags AS "reviewTags", review_comment AS "reviewComment",
-             location, image_url AS "imageUrl", completed_date AS "completedDate", created_at AS "createdAt"
-      FROM arona_boost.task_completions
-      WHERE user_id = ${user.id}
-      ORDER BY id DESC LIMIT 30
-    `;
-
-    const nowStr = nowUtcStr();
-    const rawFlash = await sql`
-      SELECT id, title, location, category, description, image_url AS "imageUrl",
-             reward, min_vip_level AS "minVipLevel", max_claims AS "maxClaims",
-             claimed_count AS "claimedCount", expires_at AS "expiresAt"
-      FROM arona_boost.flash_missions
-      WHERE is_active = 1 AND expires_at > ${nowStr}
-      ORDER BY id DESC
-    `;
-    const myClaimsRows = await sql`SELECT mission_id FROM arona_boost.flash_mission_claims WHERE user_id = ${user.id}`;
     const myFlashClaims = new Set(myClaimsRows.map((r) => r.mission_id));
     const flashMissions = rawFlash.map((fm) => {
       const remainingSlots = Math.max(0, fm.maxClaims - fm.claimedCount);
+      const alreadyClaimed = myFlashClaims.has(fm.id);
+      const isVipQualified = serialized.vipLevel >= fm.minVipLevel;
+      const isSoldOut = remainingSlots <= 0;
       return {
         ...fm,
         reward: round2(fm.reward),
+        minVip: fm.minVipLevel,
         remainingSlots,
-        alreadyClaimed: myFlashClaims.has(fm.id),
-        isVipQualified: serialized.vipLevel >= fm.minVipLevel,
-        isSoldOut: remainingSlots <= 0
+        remainingClaims: remainingSlots,
+        alreadyClaimed,
+        completedByUser: alreadyClaimed,
+        isVipQualified,
+        eligibleVip: isVipQualified,
+        isSoldOut,
+        soldOut: isSoldOut
       };
     });
 
@@ -1098,7 +1112,7 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
         lockedPreviewTasks,
         flashMissions,
         history,
-        todayStats: await getTodayStats(sql, user.id, serialized.vipLevel, levels)
+        todayStats
       }
     };
   }
@@ -1524,9 +1538,22 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
   // ---- TEAM, SALARIES, PROMOTIONS & MILESTONES ----
 
   if (method === 'GET' && path === '/api/team') {
-    const settings = await getSettingsMap(sql);
+    const [settings, mData, claimedRows, commRows, promoClaims] = await Promise.all([
+      getSettingsMap(sql),
+      evaluateUserTeamMetricsServer(sql, user.id),
+      sql`SELECT milestone_key FROM arona_boost.claimed_milestones WHERE user_id = ${user.id}`,
+      sql`
+        SELECT tc.id, tc.tier, tc.base_amount AS "baseAmount",
+               tc.commission_amount AS "commissionAmount", tc.reason,
+               tc.created_at AS "createdAt", u.phone AS "sourcePhone"
+        FROM arona_boost.team_commissions tc
+        JOIN arona_boost.users u ON u.id = tc.source_user_id
+        WHERE tc.beneficiary_id = ${user.id}
+        ORDER BY tc.id DESC LIMIT 30
+      `,
+      sql`SELECT rank_id, status, bonus_amount, physical_gift, created_at FROM arona_boost.claimed_position_bonuses WHERE user_id = ${user.id}`
+    ]);
     const serializedMe = await serializeUser(sql, user, settings);
-    const mData = await evaluateUserTeamMetricsServer(sql, user.id);
     const formatMember = (m, tier) => ({
       id: m.id,
       maskedPhone: maskPhone(m.phone),
@@ -1541,7 +1568,6 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
       ...mData.tier3Raw.map((m) => formatMember(m, 3))
     ];
 
-    const claimedRows = await sql`SELECT milestone_key FROM arona_boost.claimed_milestones WHERE user_id = ${user.id}`;
     const claimedSet = new Set(claimedRows.map((r) => r.milestone_key));
     const milestones = TEAM_MILESTONES.map((ms) => ({
       ...ms,
@@ -1550,15 +1576,6 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
       canClaim: !claimedSet.has(ms.key) && mData.activeDirect >= ms.requiredActive
     }));
 
-    const commRows = await sql`
-      SELECT tc.id, tc.tier, tc.base_amount AS "baseAmount",
-             tc.commission_amount AS "commissionAmount", tc.reason,
-             tc.created_at AS "createdAt", u.phone AS "sourcePhone"
-      FROM arona_boost.team_commissions tc
-      JOIN arona_boost.users u ON u.id = tc.source_user_id
-      WHERE tc.beneficiary_id = ${user.id}
-      ORDER BY tc.id DESC LIMIT 30
-    `;
     const commissions = commRows.map((c) => ({
       id: c.id,
       tier: c.tier,
@@ -1574,10 +1591,7 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
     const periodMonth = mData.periodMonth;
     const salaryRanksRaw = parseSalaryRanks(settings);
 
-    const [thisMonthClaims, promoClaims] = await Promise.all([
-      sql`SELECT rank_id, status, amount, created_at FROM arona_boost.salary_claims WHERE user_id = ${user.id} AND period_month = ${periodMonth}`,
-      sql`SELECT rank_id, status, bonus_amount, physical_gift, created_at FROM arona_boost.claimed_position_bonuses WHERE user_id = ${user.id}`
-    ]);
+    const thisMonthClaims = await sql`SELECT rank_id, status, amount, created_at FROM arona_boost.salary_claims WHERE user_id = ${user.id} AND period_month = ${periodMonth}`;
     const monthClaimMap = new Map(thisMonthClaims.map((c) => [c.rank_id, c]));
     const promoClaimMap = new Map(promoClaims.map((p) => [p.rank_id, p]));
 
@@ -2303,6 +2317,9 @@ export async function handleUserRoutes({ sql, method, path, url, body, user, tok
 
   if (method === 'POST' && path === '/api/point-shop/redeem') {
     const itemId = Number(body?.itemId);
+    if (!Number.isInteger(itemId) || itemId <= 0) {
+      return { status: 400, json: { error: 'معرّف المنتج المطلوب غير صالح' } };
+    }
     const shippingAddress = String(body?.shippingAddress || '').trim();
     const [item] = await sql`SELECT * FROM arona_boost.point_shop_items WHERE id = ${itemId} AND is_active = 1`;
     if (!item) return { status: 404, json: { error: 'المنتج المطلوب غير متوفر حالياً' } };

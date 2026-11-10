@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, X } from 'lucide-react';
+import { assetUrl } from '../api';
+import { useI18n } from '../i18n';
 
 const ROTATION_INTERVAL_MS = 10000; // 10 seconds exact
 
@@ -7,36 +9,42 @@ const CORPORATE_REPORTS = [
   {
     id: 'dubai',
     workplace: 'دبي — الإمارات',
-    image: '/corporate/arona-field-4.jpg?v=4',
+    image: assetUrl('/corporate/arona-field-4.jpg?v=4'),
+    fallback: assetUrl('/destinations/dest-1.jpg'),
     summary: 'اعتماد وتوجيه الأعضاء الجدد لتوثيق الحسابات وتفعيل التقييم اليومي'
   },
   {
     id: 'amman',
     workplace: 'عمّان — الأردن',
-    image: '/corporate/arona-field-2.jpg?v=4',
+    image: assetUrl('/corporate/arona-field-2.jpg?v=4'),
+    fallback: assetUrl('/destinations/dest-3.jpg'),
     summary: 'مراجعة السيولة اليومية ومطابقة عمليات الإيداع والسحب وعقود ضمان العمل'
   },
   {
     id: 'libya',
     workplace: 'طرابلس — ليبيا',
-    image: '/corporate/arona-field-5.jpg?v=4',
+    image: assetUrl('/corporate/arona-field-5.jpg?v=4'),
+    fallback: assetUrl('/destinations/dest-2.jpg'),
     summary: 'تأهيل مشرفي المجموعات واعتماد ترقيات سلم المناصب والرواتب الشهرية'
   },
   {
     id: 'iraq-baghdad',
     workplace: 'بغداد — العراق',
-    image: '/corporate/arona-field-1.jpg?v=4',
+    image: assetUrl('/corporate/arona-field-1.jpg?v=4'),
+    fallback: assetUrl('/destinations/dest-4.jpg'),
     summary: 'متابعة مستهدفات الترويج السياحي وتوسيع حصة المهام اليومية داخل التطبيق'
   },
   {
     id: 'iraq-erbil',
     workplace: 'أربيل — العراق',
-    image: '/corporate/arona-field-3.jpg?v=4',
+    image: assetUrl('/corporate/arona-field-3.jpg?v=4'),
+    fallback: assetUrl('/destinations/dest-7.jpg'),
     summary: 'تكريم قادة الفرق المحققين لمستهدفات النمو الشهري وصرف مكافآت الأداء'
   }
 ];
 
 export default function CorporateShowcase() {
+  const { t } = useI18n();
   const [sceneIdx, setSceneIdx] = useState(0);
   const [cycleKey, setCycleKey] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -109,6 +117,11 @@ export default function CorporateShowcase() {
             alt={active.workplace}
             fetchPriority="high"
             decoding="async"
+            onError={(e) => {
+              if (active.fallback && e.currentTarget.src !== active.fallback) {
+                e.currentTarget.src = active.fallback;
+              }
+            }}
             onClick={() => setLightboxOpen(true)}
             className="w-full h-full object-cover object-center animate-photo-fade cursor-pointer"
           />
@@ -145,7 +158,7 @@ export default function CorporateShowcase() {
         <div className="px-3.5 py-2.5 bg-white space-y-1">
           <div className="flex items-center justify-between gap-2">
             <span className="font-display text-[11.5px] font-extrabold text-[#07182B]">
-              التقارير التنفيذية والمجالس
+              {t('corp_reports_title', 'التقارير التنفيذية والمجالس')}
             </span>
 
             <span
@@ -180,7 +193,7 @@ export default function CorporateShowcase() {
               <div className="flex items-center gap-1.5 min-w-0">
                 <MapPin className="w-4 h-4 text-[#F5D076] shrink-0" />
                 <span className="text-xs font-extrabold text-white truncate">
-                  التقارير التنفيذية والمجالس — {active.workplace}
+                  {t('corp_reports_title', 'التقارير التنفيذية والمجالس')} — {active.workplace}
                 </span>
               </div>
               <button
@@ -196,6 +209,11 @@ export default function CorporateShowcase() {
               <img
                 src={active.image}
                 alt={active.workplace}
+                onError={(e) => {
+                  if (active.fallback && e.currentTarget.src !== active.fallback) {
+                    e.currentTarget.src = active.fallback;
+                  }
+                }}
                 className="w-full max-h-[65vh] object-contain"
               />
             </div>
