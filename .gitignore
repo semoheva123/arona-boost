@@ -1,0 +1,10 @@
+node_modules/
+vendor_runtime.tar.gz
+server/better_sqlite3.node
+pages_dist/
+data/*.db
+data/*.db-shm
+data/*.db-wal
+.env
+.env.local
+.DS_Store
