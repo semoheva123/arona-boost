@@ -11,6 +11,7 @@ import {
   Check
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
+import ModalPortal from './ModalPortal';
 import { formatUsdt, formatDateTimeAr } from '../api';
 
 export default function OfficialReceiptModal({ transaction, user, onClose, showToast }) {
@@ -177,14 +178,15 @@ export default function OfficialReceiptModal({ transaction, user, onClose, showT
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-xs flex items-end justify-center"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        className="w-full max-w-[430px] max-h-[92dvh] flex flex-col rounded-t-[30px] bg-[#F4F7FB] shadow-2xl animate-sheet overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[95] bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center"
+        onClick={onClose}
       >
+        <div
+          className="w-full max-w-[430px] max-h-[92dvh] flex flex-col rounded-t-[30px] sm:rounded-[30px] bg-[#F4F7FB] shadow-2xl animate-sheet overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Top Royal Receipt Banner */}
         <div
           className="px-5 py-4 text-white flex items-center justify-between shrink-0 border-b border-[#F5D076]/30"
@@ -340,6 +342,7 @@ export default function OfficialReceiptModal({ transaction, user, onClose, showT
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 }

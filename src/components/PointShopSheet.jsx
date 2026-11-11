@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ModalPortal from './ModalPortal';
 import {
   X,
   ShoppingBag,
@@ -82,8 +83,9 @@ export default function PointShopSheet({ isOpen, user, onClose, onUserUpdated, s
   };
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[92] bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center"
       onClick={onClose}
     >
       <div
@@ -321,5 +323,6 @@ export default function PointShopSheet({ isOpen, user, onClose, onUserUpdated, s
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

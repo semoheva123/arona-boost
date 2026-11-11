@@ -18,6 +18,7 @@ import {
   X
 } from 'lucide-react';
 import { apiRequest, buildAppUrl, formatUsdt, formatShortDateAr, formatDateTimeAr } from '../api';
+import ModalPortal from './ModalPortal';
 
 export default function TeamTab({ user, onUserUpdated, showToast }) {
   const [teamData, setTeamData] = useState(null);
@@ -798,67 +799,69 @@ export default function TeamTab({ user, onUserUpdated, showToast }) {
 
       {/* Official Personal Invitation Landing Preview Modal */}
       {invitePreviewOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-xs flex items-end justify-center"
-          onClick={() => setInvitePreviewOpen(false)}
-        >
+        <ModalPortal>
           <div
-            className="w-full max-w-[430px] rounded-t-[30px] bg-[#F4F7FB] p-5 space-y-4 shadow-2xl animate-sheet"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[95] bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center"
+            onClick={() => setInvitePreviewOpen(false)}
           >
-            <div className="flex items-center justify-between">
-              <h4 className="font-display text-sm font-extrabold text-slate-900">
-                معاينة بطاقة الترشيح التي تظهر لمدعويك
-              </h4>
-              <button
-                type="button"
-                onClick={() => setInvitePreviewOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-700 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
             <div
-              className="rounded-[24px] p-4 text-white border border-[#F5D076]/45 space-y-2"
-              style={{
-                background: 'linear-gradient(140deg, #051322 0%, #0A2542 58%, #0D6E68 100%)'
-              }}
+              className="w-full max-w-[430px] rounded-t-[30px] sm:rounded-[30px] bg-[#F4F7FB] p-5 space-y-4 shadow-2xl animate-sheet"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#F5D076]/20 border border-[#F5D076]/45 px-2.5 py-0.5 text-[10.5px] font-extrabold text-[#F5D076]">
-                  <Crown className="w-3 h-3" />
-                  <span>بطاقة ترشيح رسمية معتمدة</span>
-                </span>
-                <span className="ltr-num text-[10.5px] font-bold text-teal-200">
-                  #{1000 + (user?.id || 1)}
-                </span>
+                <h4 className="font-display text-sm font-extrabold text-slate-900">
+                  معاينة بطاقة الترشيح التي تظهر لمدعويك
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setInvitePreviewOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-700 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <p className="text-xs font-extrabold leading-relaxed">
-                تم ترشيحك للانضمام إلى كادر تقييم الضيافة في Arona Boost عبر{' '}
-                <span className="text-[#F5D076]">
-                  {user?.jobTitle || 'موظف رسمي'} (الفئة A{user?.vipLevel ?? 0})
-                </span>
-              </p>
-              <p className="text-[11px] text-teal-100/90">
-                كود الإحالة المباشر:{' '}
-                <span className="ltr-num font-extrabold text-[#F5D076]">{inviteCode}</span>
-              </p>
-            </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setInvitePreviewOpen(false);
-                handleShare();
-              }}
-              className="w-full exec-primary-btn rounded-2xl py-3 text-xs font-extrabold text-white flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Share2 className="w-4 h-4 text-[#F5D076]" />
-              <span>مشاركة رابط الترشيح الشخصي الآن</span>
-            </button>
+              <div
+                className="rounded-[24px] p-4 text-white border border-[#F5D076]/45 space-y-2"
+                style={{
+                  background: 'linear-gradient(140deg, #051322 0%, #0A2542 58%, #0D6E68 100%)'
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#F5D076]/20 border border-[#F5D076]/45 px-2.5 py-0.5 text-[10.5px] font-extrabold text-[#F5D076]">
+                    <Crown className="w-3 h-3" />
+                    <span>بطاقة ترشيح رسمية معتمدة</span>
+                  </span>
+                  <span className="ltr-num text-[10.5px] font-bold text-teal-200">
+                    #{1000 + (user?.id || 1)}
+                  </span>
+                </div>
+                <p className="text-xs font-extrabold leading-relaxed">
+                  تم ترشيحك للانضمام إلى كادر تقييم الضيافة في Arona Boost عبر{' '}
+                  <span className="text-[#F5D076]">
+                    {user?.jobTitle || 'موظف رسمي'} (الفئة A{user?.vipLevel ?? 0})
+                  </span>
+                </p>
+                <p className="text-[11px] text-teal-100/90">
+                  كود الإحالة المباشر:{' '}
+                  <span className="ltr-num font-extrabold text-[#F5D076]">{inviteCode}</span>
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setInvitePreviewOpen(false);
+                  handleShare();
+                }}
+                className="w-full exec-primary-btn rounded-2xl py-3 text-xs font-extrabold text-white flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Share2 className="w-4 h-4 text-[#F5D076]" />
+                <span>مشاركة رابط الترشيح الشخصي الآن</span>
+              </button>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   );

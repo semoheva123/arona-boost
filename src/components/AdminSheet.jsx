@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ModalPortal from './ModalPortal';
 import {
   X,
   Shield,
@@ -475,8 +476,9 @@ export default function AdminSheet({
     (totals.pendingSalariesCount || 0);
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-xs flex items-end justify-center"
+      className="fixed inset-0 z-[94] bg-slate-900/55 backdrop-blur-xs flex items-end justify-center"
       onClick={onClose}
     >
       <div
@@ -2483,5 +2485,6 @@ export default function AdminSheet({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

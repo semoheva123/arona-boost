@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ModalPortal from './ModalPortal';
 import {
   X,
   Gift,
@@ -66,8 +67,9 @@ export default function RedEnvelopeSheet({ isOpen, onClose, onUserUpdated, showT
   };
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[92] bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center"
       onClick={onClose}
     >
       <div
@@ -210,5 +212,6 @@ export default function RedEnvelopeSheet({ isOpen, onClose, onUserUpdated, showT
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

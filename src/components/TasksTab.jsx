@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { apiRequest, assetUrl, formatUsdt, formatDateTimeAr } from '../api';
 import HospitalityCoverageModal from './HospitalityCoverageModal';
+import ModalPortal from './ModalPortal';
 
 // Sector-tailored 3-axis criteria, tags, badges & CTAs for Resorts, Hotels & Tourist Landmarks
 const SECTOR_META = {
@@ -971,10 +972,11 @@ export default function TasksTab({
 
       {/* ==================== UPGRADED TRI-SECTOR CONTRACT EVALUATION MODAL (RESORTS, HOTELS & LANDMARKS) ==================== */}
       {ratingTarget && (
-        <div
-          className="fixed inset-0 z-50 bg-[#040D18]/75 backdrop-blur-xs flex items-end sm:items-center justify-center"
-          onClick={() => !submittingReview && setRatingTarget(null)}
-        >
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-[95] bg-[#040D18]/75 backdrop-blur-xs flex items-end sm:items-center justify-center"
+            onClick={() => !submittingReview && setRatingTarget(null)}
+          >
           <div
             className="w-full max-w-[430px] max-h-[95dvh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] bg-white shadow-2xl animate-sheet"
             onClick={(e) => e.stopPropagation()}
@@ -1207,6 +1209,7 @@ export default function TasksTab({
             </form>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       <HospitalityCoverageModal

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Smartphone, Download, Share, X } from 'lucide-react';
 import { useI18n } from '../i18n';
+import ModalPortal from './ModalPortal';
 
 export default function InstallAppBanner({ pwaPrompt, onTriggerPwaInstall }) {
   const { t } = useI18n();
@@ -65,57 +66,65 @@ export default function InstallAppBanner({ pwaPrompt, onTriggerPwaInstall }) {
       </div>
 
       {showGuideModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
-                  <Smartphone className="w-5 h-5" />
+        <ModalPortal>
+          <div
+            onClick={() => setShowGuideModal(false)}
+            className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-4"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-3xl bg-white p-5 space-y-4 shadow-2xl animate-sheet"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-display text-sm font-extrabold text-slate-900">
+                    تثبيت التطبيق على الشاشة الرئيسية
+                  </h4>
                 </div>
-                <h4 className="font-display text-sm font-extrabold text-slate-900">
-                  تثبيت التطبيق على الشاشة الرئيسية
-                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowGuideModal(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
+
+              {isIOS ? (
+                <ol className="space-y-2.5 text-xs text-slate-600 leading-relaxed list-decimal pr-4">
+                  <li>
+                    اضغط على زر <strong>المشاركة (Share)</strong>{' '}
+                    <Share className="inline w-3.5 h-3.5 text-sky-600" /> في شريط متصفح Safari السفلي.
+                  </li>
+                  <li>
+                    اختر <strong>«إضافة إلى الشاشة الرئيسية» (Add to Home Screen)</strong>.
+                  </li>
+                  <li>اضغط على <strong>إضافة (Add)</strong> ليظهر شعار Arona Boost كتطبيق مستقل.</li>
+                </ol>
+              ) : (
+                <ol className="space-y-2.5 text-xs text-slate-600 leading-relaxed list-decimal pr-4">
+                  <li>افتح قائمة المتصفح العلوية <strong>(⋮)</strong> في Chrome أو المتصفح لديك.</li>
+                  <li>
+                    اختر <strong>«تثبيت التطبيق» (Install App)</strong> أو{' '}
+                    <strong>«الإضافة إلى الشاشة الرئيسية»</strong>.
+                  </li>
+                  <li>أكّد التثبيت ليعمل التطبيق بملء الشاشة وبسرعة فائقة.</li>
+                </ol>
+              )}
+
               <button
                 type="button"
                 onClick={() => setShowGuideModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center cursor-pointer"
+                className="w-full rounded-2xl bg-slate-900 text-white font-bold py-3 text-xs cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                حسناً، فهمت
               </button>
             </div>
-
-            {isIOS ? (
-              <ol className="space-y-2.5 text-xs text-slate-600 leading-relaxed list-decimal pr-4">
-                <li>
-                  اضغط على زر <strong>المشاركة (Share)</strong>{' '}
-                  <Share className="inline w-3.5 h-3.5 text-sky-600" /> في شريط متصفح Safari السفلي.
-                </li>
-                <li>
-                  اختر <strong>«إضافة إلى الشاشة الرئيسية» (Add to Home Screen)</strong>.
-                </li>
-                <li>اضغط على <strong>إضافة (Add)</strong> ليظهر شعار Arona Boost كتطبيق مستقل.</li>
-              </ol>
-            ) : (
-              <ol className="space-y-2.5 text-xs text-slate-600 leading-relaxed list-decimal pr-4">
-                <li>افتح قائمة المتصفح العلوية <strong>(⋮)</strong> في Chrome أو المتصفح لديك.</li>
-                <li>
-                  اختر <strong>«تثبيت التطبيق» (Install App)</strong> أو{' '}
-                  <strong>«الإضافة إلى الشاشة الرئيسية»</strong>.
-                </li>
-                <li>أكّد التثبيت ليعمل التطبيق بملء الشاشة وبسرعة فائقة.</li>
-              </ol>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setShowGuideModal(false)}
-              className="w-full rounded-2xl bg-slate-900 text-white font-bold py-3 text-xs cursor-pointer"
-            >
-              حسناً، فهمت
-            </button>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </>
   );

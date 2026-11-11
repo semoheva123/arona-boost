@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ModalPortal from './ModalPortal';
 import {
   X,
   Gift,
@@ -120,8 +121,9 @@ export default function LuckyWheelSheet({
   };
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end justify-center"
+      className="fixed inset-0 z-[92] bg-slate-900/60 backdrop-blur-xs flex items-end justify-center"
       onClick={() => !spinning && onClose()}
     >
       <div
@@ -307,5 +309,6 @@ export default function LuckyWheelSheet({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

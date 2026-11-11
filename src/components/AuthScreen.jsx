@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import ModalPortal from './ModalPortal';
 import {
   Phone,
   Lock,
@@ -690,8 +691,9 @@ export default function AuthScreen({ onAuthSuccess, whatsappNumber, showToast })
 
       {/* ==================== LUXURY COUNTRY DIAL CODE PICKER SHEET ==================== */}
       {countryPickerOpen && (
+        <ModalPortal>
         <div
-          className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-xs flex items-end justify-center"
+          className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center"
           onClick={() => setCountryPickerOpen(false)}
         >
           <div
@@ -761,6 +763,7 @@ export default function AuthScreen({ onAuthSuccess, whatsappNumber, showToast })
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* Official Corporate Charter Modal */}

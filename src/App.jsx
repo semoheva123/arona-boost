@@ -272,7 +272,7 @@ export default function App() {
 
         {/* Global Floating Toast */}
         {toast && (
-          <div className="fixed top-4 inset-x-0 z-[70] flex justify-center px-4 pointer-events-none">
+          <div className="fixed top-4 inset-x-0 z-[140] flex justify-center px-4 pointer-events-none">
             <div
               className={`max-w-[390px] w-full rounded-2xl px-4 py-3 shadow-xl border flex items-center gap-2.5 pointer-events-auto animate-tab ${
                 toast.type === 'error'

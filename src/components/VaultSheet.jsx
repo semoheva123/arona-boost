@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ModalPortal from './ModalPortal';
 import {
   X,
   TrendingUp,
@@ -107,8 +108,9 @@ export default function VaultSheet({
   };
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-50 bg-[#040D18]/65 backdrop-blur-xs flex items-end justify-center"
+      className="fixed inset-0 z-[92] bg-[#040D18]/65 backdrop-blur-xs flex items-end justify-center"
       onClick={onClose}
     >
       <div
@@ -423,5 +425,6 @@ export default function VaultSheet({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

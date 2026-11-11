@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ModalPortal from './ModalPortal';
 import {
   X,
   Headset,
@@ -133,8 +134,9 @@ export default function ConciergeSheet({ isOpen, onClose, user, showToast }) {
   };
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-xs flex items-end justify-center"
+      className="fixed inset-0 z-[92] bg-slate-950/65 backdrop-blur-xs flex items-end justify-center"
       onClick={onClose}
     >
       <div
@@ -418,5 +420,6 @@ export default function ConciergeSheet({ isOpen, onClose, user, showToast }) {
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

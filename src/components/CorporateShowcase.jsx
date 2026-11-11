@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, X } from 'lucide-react';
 import { assetUrl } from '../api';
 import { useI18n } from '../i18n';
+import ModalPortal from './ModalPortal';
 
 const ROTATION_INTERVAL_MS = 10000; // 10 seconds exact
 
@@ -181,48 +182,50 @@ export default function CorporateShowcase() {
 
       {/* Tap-to-Zoom Modal */}
       {lightboxOpen && (
-        <div
-          onClick={() => setLightboxOpen(false)}
-          className="fixed inset-0 z-50 bg-[#040D18]/90 backdrop-blur-md flex items-center justify-center p-4 animate-tab"
-        >
+        <ModalPortal>
           <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg rounded-[24px] overflow-hidden bg-white border border-slate-200 shadow-2xl"
+            onClick={() => setLightboxOpen(false)}
+            className="fixed inset-0 z-[95] bg-[#040D18]/90 backdrop-blur-md flex items-center justify-center p-4 animate-tab"
           >
-            <div className="bg-[#07182B] text-white px-4 py-3 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <MapPin className="w-4 h-4 text-[#F5D076] shrink-0" />
-                <span className="text-xs font-extrabold text-white truncate">
-                  {t('corp_reports_title', 'التقارير التنفيذية والمجالس')} — {active.workplace}
-                </span>
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg rounded-[24px] overflow-hidden bg-white border border-slate-200 shadow-2xl"
+            >
+              <div className="bg-[#07182B] text-white px-4 py-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <MapPin className="w-4 h-4 text-[#F5D076] shrink-0" />
+                  <span className="text-xs font-extrabold text-white truncate">
+                    {t('corp_reports_title', 'التقارير التنفيذية والمجالس')} — {active.workplace}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(false)}
+                  className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setLightboxOpen(false)}
-                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="bg-black">
-              <img
-                src={active.image}
-                alt={active.workplace}
-                onError={(e) => {
-                  if (active.fallback && e.currentTarget.src !== active.fallback) {
-                    e.currentTarget.src = active.fallback;
-                  }
-                }}
-                className="w-full max-h-[65vh] object-contain"
-              />
-            </div>
+              <div className="bg-black">
+                <img
+                  src={active.image}
+                  alt={active.workplace}
+                  onError={(e) => {
+                    if (active.fallback && e.currentTarget.src !== active.fallback) {
+                      e.currentTarget.src = active.fallback;
+                    }
+                  }}
+                  className="w-full max-h-[65vh] object-contain"
+                />
+              </div>
 
-            <div className="px-4 py-3 bg-white">
-              <p className="text-xs font-bold text-slate-700 leading-relaxed">{active.summary}</p>
+              <div className="px-4 py-3 bg-white">
+                <p className="text-xs font-bold text-slate-700 leading-relaxed">{active.summary}</p>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </>
   );

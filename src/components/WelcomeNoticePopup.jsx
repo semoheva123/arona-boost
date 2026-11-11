@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ModalPortal from './ModalPortal';
 import { BellRing, Gift, ShieldCheck, X, Check } from 'lucide-react';
 
 function getTodayKey() {
@@ -48,8 +49,9 @@ export default function WelcomeNoticePopup({ welcomePopup, userId, onOpenRedEnve
     .filter(Boolean);
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-[65] bg-[#040E1B]/75 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-[98] bg-[#040E1B]/75 backdrop-blur-xs flex items-center justify-center p-4"
       onClick={handleClose}
     >
       <div
@@ -156,5 +158,6 @@ export default function WelcomeNoticePopup({ welcomePopup, userId, onOpenRedEnve
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

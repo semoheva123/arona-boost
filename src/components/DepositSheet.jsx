@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ModalPortal from './ModalPortal';
 import {
   X,
   Copy,
@@ -145,8 +146,9 @@ export default function DepositSheet({
   };
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-end justify-center"
+      className="fixed inset-0 z-[90] bg-slate-900/50 backdrop-blur-xs flex items-end justify-center"
       onClick={onClose}
     >
       <div
@@ -389,5 +391,6 @@ export default function DepositSheet({
         </form>
       </div>
     </div>
+  </ModalPortal>
   );
 }

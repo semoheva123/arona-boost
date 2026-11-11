@@ -542,7 +542,7 @@ export default function HomeTab({
           },
           {
             id: 'guidelines',
-            tab: 'job',
+            tab: 'guidelines',
             title: t('feed_guide_title', 'إشعار الموظفين وإرشادات العمل'),
             subtitle: t(
               'feed_guide_sub',
