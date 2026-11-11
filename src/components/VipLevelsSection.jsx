@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Award,
-  CheckCircle2,
-  Lock,
-  Sparkles,
-  ArrowUpLeft,
-  Zap,
-  ShieldCheck
-} from 'lucide-react';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { apiRequest, formatUsdt } from '../api';
 
 export default function VipLevelsSection({
@@ -24,6 +16,14 @@ export default function VipLevelsSection({
 
   const paidLevels = vipLevels.filter((v) => v.level >= 1);
   const userVip = user?.vipLevel ?? 0;
+  const currentTier =
+    vipLevels.find((v) => v.level === userVip) || {
+      level: 0,
+      name: 'الفئة A0',
+      dailyTasks: 1,
+      dailyProfit: 0.25,
+      monthlyProfit: 7.5
+    };
 
   const handleActivateOrDeposit = async (tier) => {
     const spendable = (user?.rechargeBalance || 0) + (user?.balance || 0);
@@ -49,176 +49,166 @@ export default function VipLevelsSection({
     }
   };
 
+  const currentPerOrder =
+    currentTier.dailyTasks > 0 ? currentTier.dailyProfit / currentTier.dailyTasks : 0;
+
   return (
-    <section id="vip-levels-section" className="space-y-3.5">
+    <section id="vip-levels-section" className="space-y-3">
       {onBack && (
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-1.5 text-xs font-extrabold text-[#07182B] hover:bg-slate-50 shadow-2xs cursor-pointer"
-        >
-          <span>← العودة إلى الرئيسية</span>
-        </button>
-      )}
-      {/* Section Header */}
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h2 className="font-display text-base font-extrabold text-[#07182B] flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-amber-600" />
-            <span>درجات التوظيف المعتمدة — أرونا</span>
-          </h2>
-          <p className="text-[11.5px] text-slate-500 mt-0.5">
-            يُحفظ مبلغ التوثيق كضمان عقد عمل مسترد بالكامل بعد إتمام 365 يوماً
-          </p>
-        </div>
-
-        <span className="gold-crest-pill rounded-xl px-2.5 py-1 text-xs font-extrabold shrink-0">
-          الفئة A{userVip}
-        </span>
-      </div>
-
-      {/* Starter Grade A0 Banner when user is on grade 0 */}
-      {userVip === 0 && (
-        <div className="exec-card rounded-2xl p-3.5 flex items-center justify-between gap-3 border-teal-300/70">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-[#07182B] text-[#F5D076] flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-extrabold text-[#07182B]">
-                عقد التدريب التمهيدي (الفئة A0) مفعّل على حسابك
-              </p>
-              <p className="text-[11px] text-slate-600">
-                لديك مهمة تقييم يومية بقيمة 0.25 USDT، أو قم بتوثيق درجة وظيفية أعلى
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between pb-1">
           <button
             type="button"
-            onClick={() => onNavigateTab('tasks')}
-            className="shrink-0 rounded-xl bg-[#07182B] text-[#F5D076] text-xs font-extrabold px-3 py-2 cursor-pointer"
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-extrabold text-[#07182B] shadow-[0_2px_8px_rgba(7,24,43,0.06)] cursor-pointer"
           >
-            التقييم
+            <ArrowRight className="w-4 h-4" />
+            <span>الرئيسية</span>
           </button>
+          <span className="font-display text-sm font-extrabold text-[#07182B]">
+            درجات أرونا الوظيفية
+          </span>
+          <div className="w-16" />
         </div>
       )}
 
-      {/* Official Arona Corporate Grade Cards (A1 - A6) */}
+      {/* Clean Current Grade Banner (EXACT tashare8 pages-vip-index top card) */}
+      <div
+        className="rounded-2xl p-4 text-white shadow-[0_8px_24px_-6px_rgba(7,24,43,0.22)] space-y-3"
+        style={{
+          background: 'linear-gradient(132deg, #07182B 0%, #0B3650 55%, #0D7A72 100%)'
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] text-white/75 font-semibold">المستوى الحالي</p>
+            <p className="font-display text-lg font-extrabold text-[#F5D076] mt-0.5">
+              الفئة A{userVip}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onNavigateTab?.('tasks')}
+            className="rounded-full bg-white/15 hover:bg-white/25 px-3.5 py-1.5 text-xs font-extrabold text-white cursor-pointer"
+          >
+            بدء مهام اليوم
+          </button>
+        </div>
+
+        <div className="grid grid-cols-4 gap-2 pt-2.5 border-t border-white/15 text-center">
+          <div>
+            <p className="text-[10px] text-white/70">المهام اليومية</p>
+            <p className="ltr-num tabular-nums text-xs font-extrabold text-white mt-0.5">
+              {currentTier.dailyTasks}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-white/70">لكل طلب</p>
+            <p className="ltr-num tabular-nums text-xs font-extrabold text-white mt-0.5">
+              ${formatUsdt(currentPerOrder)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-white/70">الربح اليومي</p>
+            <p className="ltr-num tabular-nums text-xs font-extrabold text-[#F5D076] mt-0.5">
+              ${formatUsdt(currentTier.dailyProfit)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-white/70">ربح 30 يوم</p>
+            <p className="ltr-num tabular-nums text-xs font-extrabold text-white mt-0.5">
+              ${formatUsdt(currentTier.monthlyProfit || currentTier.dailyProfit * 30)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Clean White Grade Cards (EXACT tashare8 pages-index-grade / pages-vip-index box-a!) */}
       <div className="space-y-3">
         {paidLevels.map((tier) => {
           const isCurrent = userVip === tier.level;
           const isUnlockedLower = userVip > tier.level;
-          const spendable = (user?.rechargeBalance || 0) + (user?.balance || 0);
-          const maxQual = Math.max(user?.totalDeposits || 0, spendable);
-          const canActivateNow = !isCurrent && !isUnlockedLower && maxQual >= tier.minDeposit;
-          const remainingDeposit = Math.max(0, tier.minDeposit - (user?.totalDeposits || 0));
-          const codeLabel = `A${tier.level}`;
+          const perOrder = tier.dailyTasks > 0 ? tier.dailyProfit / tier.dailyTasks : 0;
+          const monthly = tier.monthlyProfit || tier.dailyProfit * 30;
 
           return (
             <div
               key={tier.level}
-              className={`relative rounded-[26px] bg-white p-4 transition-all border ${
-                isCurrent
-                  ? 'border-[#07182B] ring-2 ring-[#F5D076]/50 shadow-[0_16px_34px_-14px_rgba(7,24,43,0.20)]'
-                  : 'border-slate-200/90 shadow-[0_10px_26px_-14px_rgba(6,21,38,0.08)]'
+              className={`bg-white rounded-2xl p-4 shadow-[0_4px_16px_rgba(7,24,43,0.05)] space-y-3 ${
+                isCurrent ? 'ring-2 ring-[#0D7A72]' : ''
               }`}
             >
-              {/* Top Row: Engraved Grade Monogram & Work Guarantee Bond */}
-              <div className="flex items-start justify-between gap-2 mb-3.5">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-[#07182B] border border-[#F5D076]/45 flex flex-col items-center justify-center shrink-0 shadow-xs">
-                    <span className="text-[8px] font-bold text-slate-300 leading-none">فئة</span>
-                    <span className="ltr-num font-display text-sm font-extrabold text-[#F5D076] leading-tight">
-                      {codeLabel}
+              {/* Top Row: Royal Crest Emblem + Title + Action Button */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center shrink-0 text-white shadow-xs"
+                    style={{
+                      background: 'linear-gradient(140deg, #07182B 0%, #0D7A72 100%)'
+                    }}
+                  >
+                    <span className="ltr-num font-display text-sm font-extrabold text-[#F5D076]">
+                      A{tier.level}
                     </span>
                   </div>
+
                   <div className="min-w-0">
                     <h3 className="font-display text-sm font-extrabold text-[#07182B] truncate">
-                      {tier.title}
+                      الفئة A{tier.level}
                     </h3>
-                    <p className="text-[11px] text-slate-500 line-clamp-1">{tier.subtitle}</p>
+                    <p className="text-xs font-bold text-[#0D7A72] mt-0.5 ltr-num tabular-nums">
+                      ضمان العمل: {formatUsdt(tier.minDeposit)} USDT
+                    </p>
                   </div>
                 </div>
 
-                <div className="text-left shrink-0 rounded-xl bg-[#F8FAFC] border border-slate-200/85 px-2.5 py-1">
-                  <p className="text-[9.5px] font-bold text-slate-500">ضمان العقد</p>
-                  <p className="ltr-num tabular-nums text-sm font-extrabold text-[#07182B]">
-                    ${formatUsdt(tier.minDeposit)}
-                  </p>
-                </div>
-              </div>
-
-              {/* 3 Financial & Operational Metrics */}
-              <div className="grid grid-cols-3 gap-2 rounded-2xl bg-[#F6F8FB] border border-slate-200/75 p-2.5 mb-3">
-                <div className="text-center">
-                  <p className="text-[10px] font-semibold text-slate-500">العائد اليومي</p>
-                  <p className="ltr-num tabular-nums text-xs font-extrabold text-emerald-700 mt-0.5">
-                    +${formatUsdt(tier.dailyProfit)}
-                  </p>
-                </div>
-                <div className="text-center border-x border-slate-200/80">
-                  <p className="text-[10px] font-semibold text-slate-500">حصة التقييم</p>
-                  <p className="text-xs font-extrabold text-[#07182B] mt-0.5">
-                    {tier.dailyTasks} وجهات
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[10px] font-semibold text-slate-500">الدخل الشهري</p>
-                  <p className="ltr-num tabular-nums text-xs font-extrabold text-[#07182B] mt-0.5">
-                    ${formatUsdt(tier.monthlyProfit)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Bottom Action Bar */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#0D7A72]" />
-                  <span>نسبة العائد:</span>
-                  <strong className="text-[#07182B] tabular-nums">{tier.dailyRate}</strong>
-                </span>
-
                 {isCurrent ? (
-                  <button
-                    type="button"
-                    onClick={() => onNavigateTab('tasks')}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-2 text-xs font-extrabold text-emerald-800 cursor-pointer"
-                  >
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-extrabold text-[#0D7A72] shrink-0">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>درجتك الحالية • نفّذ التقييم</span>
-                  </button>
-                ) : isUnlockedLower ? (
-                  <span className="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#0D7A72]" />
-                    <span>مشمولة ضمن عقدك</span>
+                    <span>مفعّل</span>
                   </span>
-                ) : canActivateNow ? (
+                ) : isUnlockedLower ? (
+                  <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-500 shrink-0">
+                    مشمول
+                  </span>
+                ) : (
                   <button
                     type="button"
                     disabled={activatingLevel === tier.level}
                     onClick={() => handleActivateOrDeposit(tier)}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#0D7A72] hover:bg-teal-800 text-white px-3.5 py-2 text-xs font-extrabold shadow-2xs cursor-pointer"
+                    className="rounded-full bg-[#0D7A72] hover:bg-[#0A645D] text-white px-4 py-2 text-xs font-extrabold shrink-0 transition-colors cursor-pointer shadow-2xs"
                   >
-                    <Zap className="w-3.5 h-3.5 text-[#F5D076]" />
-                    <span>
-                      {activatingLevel === tier.level ? 'جاري التوثيق...' : `تفعيل ${tier.name}`}
-                    </span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleActivateOrDeposit(tier)}
-                    className="exec-primary-btn inline-flex items-center gap-1.5 rounded-xl text-white px-3.5 py-2 text-xs font-extrabold transition-all cursor-pointer"
-                  >
-                    <Lock className="w-3 h-3 text-[#F5D076]" />
-                    <span>
-                      توثيق العقد (
-                      {remainingDeposit > 0 ? `${formatUsdt(remainingDeposit)}$` : `${tier.minDeposit}$`}
-                      )
-                    </span>
-                    <ArrowUpLeft className="w-3.5 h-3.5 text-[#F5D076]" />
+                    {activatingLevel === tier.level ? '...' : 'انضم الآن'}
                   </button>
                 )}
+              </div>
+
+              {/* Clean 2x2 Metrics Grid (المهام اليومية / لكل طلب / الربح اليومي / ربح 30 يوم) */}
+              <div className="grid grid-cols-2 gap-2.5 rounded-xl bg-[#F6F9FC] p-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-semibold">المهام اليومية</span>
+                  <span className="ltr-num tabular-nums font-extrabold text-[#07182B]">
+                    {tier.dailyTasks}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-semibold">لكل طلب</span>
+                  <span className="ltr-num tabular-nums font-extrabold text-[#07182B]">
+                    {formatUsdt(perOrder)} USDT
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-semibold">الربح اليومي</span>
+                  <span className="ltr-num tabular-nums font-extrabold text-[#0D7A72]">
+                    {formatUsdt(tier.dailyProfit)} USDT
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-semibold">ربح 30 يوم</span>
+                  <span className="ltr-num tabular-nums font-extrabold text-[#0D7A72]">
+                    {formatUsdt(monthly)} USDT
+                  </span>
+                </div>
               </div>
             </div>
           );

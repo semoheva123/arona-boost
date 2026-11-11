@@ -4,9 +4,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Mail,
-  Wifi,
-  BatteryFull
+  Mail
 } from 'lucide-react';
 import { apiRequest, assetUrl, getStoredToken, setStoredToken } from './api';
 import { LanguageSwitcherPill, useI18n } from './i18n';
@@ -31,11 +29,6 @@ import WelcomeNoticePopup from './components/WelcomeNoticePopup';
 import RedEnvelopeSheet from './components/RedEnvelopeSheet';
 import PointShopSheet from './components/PointShopSheet';
 
-function getClockText() {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
 export default function App() {
   const [booting, setBooting] = useState(true);
   const [user, setUser] = useState(null);
@@ -43,11 +36,10 @@ export default function App() {
   const [vipLevels, setVipLevels] = useState([]);
   const [platformConfig, setPlatformConfig] = useState(null);
   const [publicConfig, setPublicConfig] = useState(null);
-  const [clockText, setClockText] = useState(getClockText);
   const [pwaPrompt, setPwaPrompt] = useState(null);
 
   const [activeTab, setActiveTab] = useState('home');
-  const [earningsSubTab, setEarningsSubTab] = useState('guide');
+  const [earningsSubTab, setEarningsSubTab] = useState('grades');
   const [txRefreshKey, setTxRefreshKey] = useState(0);
 
   // Modals / Sheets
@@ -80,12 +72,6 @@ export default function App() {
     const timer = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(timer);
   }, [toast]);
-
-  // Desktop iPhone bezel clock updater
-  useEffect(() => {
-    const timer = setInterval(() => setClockText(getClockText()), 15000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Capture Android/Chrome native PWA install prompt
   useEffect(() => {
@@ -232,17 +218,17 @@ export default function App() {
 
   if (booting) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-[#061424]">
+      <div className="min-h-dvh flex items-center justify-center bg-[#EEF4F8]">
         <div className="flex flex-col items-center gap-3">
           <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-[#F5D076] border border-[#F5D076]/40 shadow-md"
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-[#F5D076] shadow-md"
             style={{
               background: 'linear-gradient(135deg, #07182B 0%, #0D6E66 100%)'
             }}
           >
             <Loader2 className="w-7 h-7 animate-spin" />
           </div>
-          <p className="font-display text-sm font-bold text-[#F5D076]">Arona Boost</p>
+          <p className="font-display text-sm font-bold text-[#07182B]">Arona Boost</p>
         </div>
       </div>
     );
@@ -253,23 +239,9 @@ export default function App() {
   const unreadCount = user?.unreadNotifications ?? 0;
 
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-[#071525] via-[#0B2038] to-[#071525] flex justify-center lg:py-4">
-      {/* Mobile Fullscreen / Desktop iPhone Titanium Bezel Frame (matching tashare8 PC view in Royal Colors) */}
-      <div className="w-full max-w-[430px] min-h-dvh lg:min-h-[860px] bg-[#EFF3F8] relative shadow-[0_24px_80px_rgba(0,0,0,0.48)] lg:rounded-[44px] lg:border-[7px] lg:border-[#10253E] lg:ring-1 lg:ring-[#F5D076]/35 flex flex-col overflow-x-clip">
-        {/* Desktop-only iPhone Status Bar & Dynamic Island */}
-        <div
-          className="hidden lg:flex items-center justify-between px-6 pt-2 pb-1 text-[11px] font-extrabold text-slate-200 select-none"
-          style={{ background: '#051322' }}
-          dir="ltr"
-        >
-          <span className="tabular-nums">{clockText}</span>
-          <div className="w-24 h-4 rounded-full bg-black/80 border border-white/10" />
-          <div className="flex items-center gap-1.5 text-slate-200">
-            <Wifi className="w-3.5 h-3.5" />
-            <BatteryFull className="w-4 h-4 text-[#F5D076]" />
-          </div>
-        </div>
-
+    <div className="min-h-dvh bg-[#DFE7F0] flex justify-center">
+      {/* Clean Mobile Canvas (matches tashare8.com H5 430px centered viewport) */}
+      <div className="w-full max-w-[430px] min-h-dvh bg-[#EEF4F8] relative shadow-[0_0_40px_rgba(7,24,43,0.08)] flex flex-col overflow-x-clip">
         {/* Global Floating Toast */}
         {toast && (
           <div className="fixed top-4 inset-x-0 z-[140] flex justify-center px-4 pointer-events-none">
@@ -277,7 +249,7 @@ export default function App() {
               className={`max-w-[390px] w-full rounded-2xl px-4 py-3 shadow-xl border flex items-center gap-2.5 pointer-events-auto animate-tab ${
                 toast.type === 'error'
                   ? 'bg-rose-950/95 border-rose-700/80 text-white'
-                  : 'bg-[#061628]/96 border-[#F5D076]/35 text-white'
+                  : 'bg-[#07182B]/95 border-[#F5D076]/35 text-white'
               }`}
             >
               {toast.type === 'error' ? (
@@ -298,61 +270,49 @@ export default function App() {
           />
         ) : (
           <>
-            {/* 3-Zone Symmetric Top Header Bar (matching tashare8 layout in Arona Royal Colors) */}
-            <header
-              className="sticky top-0 z-30 border-b border-[#F5D076]/25 px-3.5 py-2.5 grid grid-cols-3 items-center shadow-[0_10px_28px_rgba(5,19,34,0.22)] relative"
-              style={{
-                background:
-                  'linear-gradient(145deg, #051322 0%, #081F37 62%, #0B3A4E 100%)'
-              }}
-            >
-              <div
-                className="pointer-events-none absolute bottom-0 inset-x-0 h-[1px]"
-                style={{
-                  background:
-                    'linear-gradient(90deg, rgba(245,208,118,0.06) 0%, rgba(245,208,118,0.55) 50%, rgba(245,208,118,0.06) 100%)'
-                }}
-              />
-
-              {/* Zone 1: Official Messages / Notifications Envelope with Red Badge */}
-              <div className="flex items-center justify-start gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setNotifOpen(true)}
-                  title="صندوق الرسائل والإشعارات"
-                  className="relative w-9 h-9 rounded-xl bg-white/10 border border-[#F5D076]/30 text-[#F5D076] flex items-center justify-center hover:bg-white/18 transition-colors cursor-pointer"
-                >
-                  <Mail className="w-4.5 h-4.5" />
-                  {unreadCount > 0 && (
-                    <span className="ltr-num tabular-nums absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-rose-500 text-white text-[9.5px] font-extrabold flex items-center justify-center shadow-xs ring-2 ring-[#071A2E]">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </button>
-
-                {user.isAdmin && (
+            {/* Minimal Light Top Bar on Home ONLY (matches IMG_4501.png & tashare8 pages-index-index) */}
+            {activeTab === 'home' && (
+              <header className="sticky top-0 z-30 bg-[#EEF4F8]/95 backdrop-blur-md px-3.5 py-2.5 grid grid-cols-3 items-center">
+                {/* Start: Clean Message Envelope with Red Badge */}
+                <div className="flex items-center justify-start gap-2">
                   <button
                     type="button"
-                    onClick={() => setAdminOpen(true)}
-                    title={t('admin_btn', 'الإدارة')}
-                    className="inline-flex items-center gap-1 rounded-xl bg-white/12 hover:bg-white/20 border border-[#F5D076]/35 text-white px-2 py-1.5 text-[10px] font-extrabold cursor-pointer"
+                    onClick={() => setNotifOpen(true)}
+                    title="صندوق الرسائل والإشعارات"
+                    className="relative w-8 h-8 rounded-full flex items-center justify-center text-[#07182B] hover:bg-white/70 transition-colors cursor-pointer"
                   >
-                    <Shield className="w-3.5 h-3.5 text-[#F5D076]" />
-                    <span>{t('admin_btn', 'الإدارة')}</span>
+                    <Mail className="w-[21px] h-[21px] stroke-[2]" />
+                    {unreadCount > 0 && (
+                      <span className="ltr-num tabular-nums absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9.5px] font-extrabold flex items-center justify-center ring-2 ring-[#EEF4F8]">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </button>
-                )}
-              </div>
 
-              {/* Zone 2: Centered Brand Crest */}
-              <div className="flex items-center justify-center">
-                <BrandLogo size="sm" variant="light" />
-              </div>
+                  {user.isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setAdminOpen(true)}
+                      title={t('admin_btn', 'الإدارة')}
+                      className="inline-flex items-center gap-1 rounded-full bg-[#07182B] text-[#F5D076] px-2.5 py-1 text-[10px] font-extrabold cursor-pointer shadow-2xs"
+                    >
+                      <Shield className="w-3 h-3" />
+                      <span>{t('admin_btn', 'الإدارة')}</span>
+                    </button>
+                  )}
+                </div>
 
-              {/* Zone 3: Language & Country Switcher Pill */}
-              <div className="flex items-center justify-end">
-                <LanguageSwitcherPill compact={true} />
-              </div>
-            </header>
+                {/* Center: Compact 1-line Arona Boost Mark */}
+                <div className="flex items-center justify-center">
+                  <BrandLogo size="sm" compact={true} variant="dark" />
+                </div>
+
+                {/* End: Clean Circular Flag Selector */}
+                <div className="flex items-center justify-end">
+                  <LanguageSwitcherPill compact={true} variant="clean" />
+                </div>
+              </header>
+            )}
 
             {/* Startup Employee Notice Popup (with "عدم التذكير اليوم") */}
             <WelcomeNoticePopup
@@ -362,7 +322,7 @@ export default function App() {
             />
 
             {/* Active Tab View */}
-            <main className="flex-1 px-4 pt-3.5 pb-28">
+            <main className="flex-1 px-3.5 pt-1 pb-24">
               {activeTab === 'home' && (
                 <HomeTab
                   user={user}
@@ -379,7 +339,7 @@ export default function App() {
                   onOpenPointShop={() => setPointShopOpen(true)}
                   onOpenWheel={() => setWheelOpen(true)}
                   onOpenCharter={handleOpenCharter}
-                  onOpenEarnings={(sub = 'guide') => {
+                  onOpenEarnings={(sub = 'grades') => {
                     setEarningsSubTab(sub);
                     setActiveTab('earnings');
                   }}
@@ -434,8 +394,11 @@ export default function App() {
                   whatsappNumber={whatsappNumber}
                   guaranteeDurationDays={activeConfig.guaranteeDurationDays || 365}
                   refreshKey={txRefreshKey}
+                  pwaPrompt={pwaPrompt}
+                  onTriggerPwaInstall={handleTriggerPwaInstall}
                   onOpenDeposit={() => handleOpenDeposit()}
                   onOpenWithdraw={() => setWithdrawOpen(true)}
+                  onOpenVault={() => setVaultOpen(true)}
                   onOpenRecords={(tab = 'daily') => setRecordsSheet({ open: true, tab })}
                   onOpenWheel={() => setWheelOpen(true)}
                   onOpenRedEnvelope={() => setRedEnvelopeOpen(true)}
@@ -460,7 +423,7 @@ export default function App() {
               )}
             />
 
-            {/* Deposit Bottom Sheet */}
+            {/* Deposit Full-Screen / Sheet */}
             <DepositSheet
               isOpen={depositSheet.open}
               initialAmount={depositSheet.amount}
@@ -470,7 +433,7 @@ export default function App() {
               showToast={showToast}
             />
 
-            {/* Withdraw Bottom Sheet */}
+            {/* Withdraw Full-Screen Page (matches IMG_4502.png) */}
             <WithdrawSheet
               isOpen={withdrawOpen}
               user={user}
@@ -490,7 +453,7 @@ export default function App() {
               showToast={showToast}
             />
 
-            {/* Official Corporate Documents & Charter Sheet */}
+            {/* Official Corporate Documents & Charter Reader */}
             <CorporateCharterSheet
               isOpen={charterSheet.open}
               initialSection={charterSheet.section}

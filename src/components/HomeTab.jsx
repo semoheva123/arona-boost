@@ -1,30 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  UserPlus,
-  Lock,
-  Volume2,
-  VolumeX,
-  TrendingUp,
-  Award,
-  Sparkles,
-  Gift,
-  ShoppingBag,
-  Play,
-  Pause,
-  FileText,
-  Briefcase,
-  BookOpen,
-  Bell,
-  ChevronLeft
-} from 'lucide-react';
+import { Volume2, VolumeX, Play, Pause } from 'lucide-react';
 import { apiRequest, assetUrl } from '../api';
 import { useI18n } from '../i18n';
 import CorporateShowcase from './CorporateShowcase';
-import ServicesCarousel from './ServicesCarousel';
-import InstallAppBanner from './InstallAppBanner';
 import VipLevelsSection from './VipLevelsSection';
+import {
+  TashareWithdrawIcon,
+  TashareDepositIcon,
+  TashareInviteIcon,
+  TashareInvestIcon,
+  ProfitCardIllustration,
+  StarJourneyCardIllustration
+} from './TashareIcons';
 
 const FALLBACK_ACTIVITY = [
   { id: 1, text: 'العضو 0991***233 أتم تقييم وجهاته السياحية وحقق +$6.38 USDT' },
@@ -36,25 +23,21 @@ const PROMO_SLIDES = [
   {
     image: assetUrl('/corporate/arona-field-4.jpg?v=4'),
     fallback: assetUrl('/destinations/dest-1.jpg'),
-    title: 'منظومة Arona Boost العالمية للتقييم السياحي والفندقي',
-    caption: 'عقود تشغيلية موثقة مع المنتجعات العالمية والفنادق الفاخرة والمعالم السياحية الكبرى'
+    title: 'منظومة Arona Boost العالمية للتقييم السياحي والفندقي'
   },
   {
     image: assetUrl('/destinations/dest-7.jpg'),
     fallback: assetUrl('/destinations/dest-8.jpg'),
-    title: 'تغطية شاملة للمنتجعات والفنادق والأماكن السياحية',
-    caption: 'تقييم يومي معتمد يمنحك عوائد فورية بالدولار الرقمي USDT وضمان عمل قابل للاسترداد'
+    title: 'تغطية شاملة للمنتجعات والفنادق والمعالم السياحية الشريكة'
   },
   {
     image: assetUrl('/corporate/arona-field-2.jpg?v=4'),
     fallback: assetUrl('/destinations/dest-3.jpg'),
-    title: 'مجالس إقليمية وسلّم وظيفي رسمي (الفئة A0 — A6)',
-    caption: 'رواتب شهرية ثابتة، مكافآت فريق من 3 مستويات، متجر نقاط، وفعاليات الظرف الأحمر'
+    title: 'عقود تقييم يومية معتمدة وسلّم وظيفي رسمي (الفئة A0 — A6)'
   }
 ];
 
-function CorporatePromoPlayer({ onOpenGrades }) {
-  const { t } = useI18n();
+function CorporatePromoPlayer() {
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
   const [slideIdx, setSlideIdx] = useState(0);
@@ -78,7 +61,6 @@ function CorporatePromoPlayer({ onOpenGrades }) {
     return () => clearInterval(timer);
   }, [playing]);
 
-  // Ambient harmonic chime synthesizer when playing & unmuted (zero external audio files needed)
   useEffect(() => {
     if (!playing || muted) {
       if (soundTimerRef.current) {
@@ -112,7 +94,7 @@ function CorporatePromoPlayer({ onOpenGrades }) {
           osc.type = 'sine';
           osc.frequency.setValueAtTime(freq, now + i * 0.08);
           gain.gain.setValueAtTime(0.0001, now + i * 0.08);
-          gain.gain.exponentialRampToValueAtTime(0.035, now + i * 0.08 + 0.18);
+          gain.gain.exponentialRampToValueAtTime(0.03, now + i * 0.08 + 0.18);
           gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.9);
           osc.connect(gain);
           gain.connect(ctx.destination);
@@ -154,7 +136,6 @@ function CorporatePromoPlayer({ onOpenGrades }) {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     if (!rect.width) return;
-    // Progress bar is LTR left-to-right or RTL depending on dir; calculate click ratio cleanly
     const isRtl = document.documentElement.dir === 'rtl';
     const ratio = isRtl
       ? (rect.right - e.clientX) / rect.width
@@ -165,8 +146,8 @@ function CorporatePromoPlayer({ onOpenGrades }) {
   };
 
   return (
-    <div className="exec-card rounded-[24px] overflow-hidden border border-slate-200/90 shadow-sm">
-      <div className="relative h-48 w-full bg-[#07182B] overflow-hidden">
+    <div className="rounded-2xl overflow-hidden bg-black shadow-[0_4px_16px_rgba(7,24,43,0.06)] relative h-44 w-full">
+      {playing ? (
         <img
           src={current.image}
           alt={current.title}
@@ -175,82 +156,75 @@ function CorporatePromoPlayer({ onOpenGrades }) {
               e.currentTarget.src = current.fallback;
             }
           }}
-          className={`w-full h-full object-cover transition-transform duration-1000 ${
-            playing ? 'scale-105' : 'scale-100'
-          }`}
+          className="w-full h-full object-cover transition-transform duration-1000 scale-105 opacity-90"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#040E1A]/90 via-[#07182B]/35 to-black/25" />
-
-        {/* Top Badge */}
-        <div className="absolute top-3 inset-x-3 flex items-center justify-between">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#07182B]/80 border border-[#F5D076]/40 backdrop-blur-xs px-2.5 py-1 text-[10px] font-extrabold text-[#F5D076]">
-            <Sparkles className="w-3 h-3" />
-            {t('promo_badge', 'العرض التعريفي — Arona Boost')}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              const nextMuted = !muted;
-              setMuted(nextMuted);
-              if (!nextMuted && !playing) {
-                setPlaying(true);
+      ) : (
+        <div
+          className="w-full h-full relative flex items-center justify-center"
+          style={{
+            background: 'linear-gradient(145deg, #040D17 0%, #07182B 60%, #0A2E36 100%)'
+          }}
+        >
+          <img
+            src={current.image}
+            alt={current.title}
+            onError={(e) => {
+              if (current.fallback && e.currentTarget.src !== current.fallback) {
+                e.currentTarget.src = current.fallback;
               }
             }}
-            aria-label={muted ? 'تشغيل الصوت' : 'كتم الصوت'}
-            className="w-7 h-7 rounded-full bg-black/45 hover:bg-black/65 text-white flex items-center justify-center cursor-pointer"
-          >
-            {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-[#F5D076]" />}
-          </button>
+            className="w-full h-full object-cover opacity-35"
+          />
         </div>
+      )}
 
-        {/* Center Play/Pause Button */}
-        <button
-          type="button"
-          onClick={() => {
-            if (!playing && progress >= 100) setProgress(0);
-            setPlaying((p) => !p);
-          }}
-          aria-label={playing ? 'إيقاف العرض' : 'تشغيل العرض'}
-          className="absolute inset-0 flex items-center justify-center cursor-pointer group"
+      {/* Clean Minimal Play/Pause Overlay (matches IMG_4532.png clean video frame) */}
+      <button
+        type="button"
+        onClick={() => {
+          if (!playing && progress >= 100) setProgress(0);
+          setPlaying((p) => !p);
+        }}
+        aria-label={playing ? 'إيقاف العرض' : 'تشغيل العرض'}
+        className="absolute inset-0 flex items-center justify-center cursor-pointer group"
+      >
+        <span
+          className={`w-12 h-12 rounded-full bg-white/15 backdrop-blur-xs border border-white/60 text-white flex items-center justify-center transition-all ${
+            playing ? 'opacity-0 group-hover:opacity-100 scale-95' : 'opacity-100 group-hover:scale-105'
+          }`}
         >
-          <span
-            className={`w-13 h-13 rounded-full bg-[#07182B]/80 border-2 border-[#F5D076] text-[#F5D076] flex items-center justify-center shadow-xl transition-all ${
-              playing ? 'opacity-0 group-hover:opacity-100 scale-90' : 'opacity-100 group-hover:scale-105'
-            }`}
-          >
-            {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-[#F5D076] ml-0.5" />}
-          </span>
-        </button>
+          {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-white ml-0.5" />}
+        </span>
+      </button>
 
-        {/* Bottom Caption + Progress */}
-        <div className="absolute bottom-0 inset-x-0 p-3.5 space-y-2 pointer-events-none">
-          <div className="flex items-end justify-between gap-2">
-            <div className="min-w-0">
-              <p className="font-display text-xs font-extrabold text-white truncate">{current.title}</p>
-              <p className="text-[10.5px] text-slate-200 line-clamp-1">{current.caption}</p>
-            </div>
+      {/* Subtle Bottom Video Bar when active */}
+      {playing && (
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent px-3 py-2.5 space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-bold text-white truncate">{current.title}</p>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenGrades();
+                setMuted((m) => !m);
               }}
-              className="pointer-events-auto shrink-0 rounded-lg bg-[#F5D076] text-[#07182B] px-2.5 py-1 text-[10px] font-extrabold cursor-pointer"
+              aria-label={muted ? 'تشغيل الصوت' : 'كتم الصوت'}
+              className="w-6 h-6 rounded-full bg-white/15 text-white flex items-center justify-center shrink-0 cursor-pointer"
             >
-              {t('promo_grades_btn', 'درجات الوظيفة')}
+              {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-[#F5D076]" />}
             </button>
           </div>
           <div
             onClick={handleSeek}
-            className="pointer-events-auto h-1.5 w-full rounded-full bg-white/25 overflow-hidden flex items-center cursor-pointer"
+            className="h-1 w-full rounded-full bg-white/25 overflow-hidden cursor-pointer"
           >
             <div
-              className="h-full bg-gradient-to-l from-[#F5D076] to-[#0D7A72] transition-all duration-300"
-              style={{ width: `${playing || progress > 0 ? progress : 18}%` }}
+              className="h-full bg-white transition-all duration-300"
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -259,13 +233,9 @@ export default function HomeTab({
   user,
   vipLevels = [],
   liveTickerEnabled = true,
-  pwaPrompt,
-  onTriggerPwaInstall,
   onOpenDeposit,
   onOpenWithdraw,
   onOpenVault,
-  onOpenRedEnvelope,
-  onOpenPointShop,
   onOpenEarnings,
   onOpenCharter,
   onNavigateTab,
@@ -310,7 +280,7 @@ export default function HomeTab({
 
   if (subView === 'levels') {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3.5 pt-1">
         <VipLevelsSection
           user={user}
           vipLevels={vipLevels}
@@ -326,22 +296,20 @@ export default function HomeTab({
   }
 
   return (
-    <div className="space-y-3.5">
-      {/* 1. Compact Top Photo Slider (التقارير التنفيذية والمجالس — rotates every 10s) */}
+    <div className="space-y-3">
+      {/* 1. Top Photo Slider (IMG_4532.png #1 — rotates every 10s) */}
       <CorporateShowcase />
 
-      {/* 2. Executive Quick Actions Card (4 Primary Actions + 2 Tashare Event Pills) */}
-      <div className="exec-card rounded-[24px] px-3 py-4 space-y-3">
+      {/* 2. Pure White 4-Icon Card (IMG_4532.png #2 — ONLY 4 clean icons, zero clutter) */}
+      <div className="bg-white rounded-2xl px-3 py-4 shadow-[0_4px_16px_rgba(7,24,43,0.05)]">
         <div className="grid grid-cols-4 gap-2">
           <button
             type="button"
             onClick={onOpenWithdraw}
-            className="flex flex-col items-center gap-2 py-1 rounded-2xl hover:bg-slate-50 active:scale-[0.97] transition-all cursor-pointer group"
+            className="flex flex-col items-center gap-2 active:scale-95 transition-transform cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100/90 border border-amber-200/80 text-amber-700 flex items-center justify-center shadow-xs group-hover:shadow-md transition-all">
-              <ArrowUpRight className="w-5 h-5 stroke-[2.3]" />
-            </div>
-            <span className="text-[11.5px] font-extrabold text-slate-800">
+            <TashareWithdrawIcon className="w-12 h-12" />
+            <span className="text-[12px] font-bold text-[#07182B]">
               {t('home_act_withdraw', 'سحب')}
             </span>
           </button>
@@ -349,12 +317,10 @@ export default function HomeTab({
           <button
             type="button"
             onClick={() => onOpenDeposit()}
-            className="flex flex-col items-center gap-2 py-1 rounded-2xl hover:bg-slate-50 active:scale-[0.97] transition-all cursor-pointer group"
+            className="flex flex-col items-center gap-2 active:scale-95 transition-transform cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-50 to-blue-100/90 border border-sky-200/80 text-[#0B2D50] flex items-center justify-center shadow-xs group-hover:shadow-md transition-all">
-              <ArrowDownLeft className="w-5 h-5 stroke-[2.3]" />
-            </div>
-            <span className="text-[11.5px] font-extrabold text-slate-800">
+            <TashareDepositIcon className="w-12 h-12" />
+            <span className="text-[12px] font-bold text-[#07182B]">
               {t('home_act_deposit', 'إيداع')}
             </span>
           </button>
@@ -362,12 +328,10 @@ export default function HomeTab({
           <button
             type="button"
             onClick={() => onNavigateTab('team')}
-            className="flex flex-col items-center gap-2 py-1 rounded-2xl hover:bg-slate-50 active:scale-[0.97] transition-all cursor-pointer group"
+            className="flex flex-col items-center gap-2 active:scale-95 transition-transform cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-100/90 border border-teal-200/80 text-[#0D7A72] flex items-center justify-center shadow-xs group-hover:shadow-md transition-all">
-              <UserPlus className="w-5 h-5 stroke-[2.2]" />
-            </div>
-            <span className="text-[11.5px] font-extrabold text-slate-800">
+            <TashareInviteIcon className="w-12 h-12" />
+            <span className="text-[12px] font-bold text-[#07182B]">
               {t('home_act_invite', 'دعوة')}
             </span>
           </button>
@@ -375,134 +339,71 @@ export default function HomeTab({
           <button
             type="button"
             onClick={onOpenVault}
-            className="flex flex-col items-center gap-2 py-1 rounded-2xl hover:bg-slate-50 active:scale-[0.97] transition-all cursor-pointer group"
+            className="flex flex-col items-center gap-2 active:scale-95 transition-transform cursor-pointer relative"
           >
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#07182B] to-[#123358] border border-[#F5D076]/45 text-[#F5D076] flex items-center justify-center shadow-sm group-hover:shadow-md transition-all relative">
-              <Lock className="w-5 h-5 stroke-[2.2]" />
+            <div className="relative">
+              <TashareInvestIcon className="w-12 h-12" />
               {user.activeVaultCount > 0 && (
-                <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-extrabold flex items-center justify-center border border-white">
+                <span className="ltr-num absolute -top-1 -left-1 w-4 h-4 rounded-full bg-[#0D7A72] text-white text-[9px] font-extrabold flex items-center justify-center ring-2 ring-white">
                   {user.activeVaultCount}
                 </span>
               )}
             </div>
-            <span className="text-[10.5px] font-extrabold text-[#07182B] leading-tight text-center">
+            <span className="text-[11px] font-bold text-[#07182B] leading-tight text-center">
               {t('home_act_vault', 'استثمر مع أرونا')}
             </span>
           </button>
         </div>
-
-        {/* Red Envelope (الظرف الأحمر) & Point Shop (متجر النقاط) Strip */}
-        <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={onOpenRedEnvelope}
-            className="flex items-center justify-between gap-2 rounded-2xl bg-gradient-to-l from-[#7F1D1D] via-[#991B1B] to-[#07182B] text-white px-3 py-2.5 shadow-xs active:scale-[0.99] transition-all cursor-pointer"
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-[#F5D076]/20 border border-[#F5D076]/45 text-[#F5D076] flex items-center justify-center shrink-0">
-                <Gift className="w-4 h-4" />
-              </div>
-              <div className="text-right min-w-0">
-                <p className="text-[11px] font-extrabold text-[#F5D076] truncate">الظرف الأحمر</p>
-                <p className="text-[9.5px] text-rose-100 truncate">أكواد الهدايا النقدية</p>
-              </div>
-            </div>
-            <ChevronLeft className="w-3.5 h-3.5 text-[#F5D076] shrink-0" />
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenPointShop}
-            className="flex items-center justify-between gap-2 rounded-2xl bg-gradient-to-l from-[#07182B] via-[#0F2B4C] to-[#0D7A72] text-white px-3 py-2.5 shadow-xs active:scale-[0.99] transition-all cursor-pointer"
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-[#F5D076]/20 border border-[#F5D076]/45 text-[#F5D076] flex items-center justify-center shrink-0">
-                <ShoppingBag className="w-4 h-4" />
-              </div>
-              <div className="text-right min-w-0">
-                <p className="text-[11px] font-extrabold text-white truncate">متجر النقاط</p>
-                <p className="text-[9.5px] text-amber-200 truncate ltr-num">
-                  {user.pointsBalance || 0} pts
-                </p>
-              </div>
-            </div>
-            <ChevronLeft className="w-3.5 h-3.5 text-[#F5D076] shrink-0" />
-          </button>
-        </div>
       </div>
 
-      {/* 3. Single-Line Speaker Live Activity Bar */}
+      {/* 3. Single-Line White Speaker Notice Bar (IMG_4532.png #3) */}
       {liveTickerEnabled && (
-        <div className="exec-card rounded-2xl px-3.5 py-2.5 flex items-center gap-2.5 overflow-hidden">
-          <div className="w-6 h-6 rounded-lg bg-[#07182B] text-[#F5D076] flex items-center justify-center shrink-0">
-            <Volume2 className="w-3.5 h-3.5" />
-          </div>
+        <div className="bg-white rounded-xl px-3.5 py-2.5 shadow-[0_2px_10px_rgba(7,24,43,0.04)] flex items-center gap-2.5 overflow-hidden">
+          <Volume2 className="w-4 h-4 text-[#0D7A72] shrink-0" />
           <p
             key={activeFeedItem.id || tickerIndex}
-            className="text-[11.5px] font-bold text-slate-700 truncate flex-1 animate-editorial"
+            className="text-[12px] font-semibold text-slate-600 truncate flex-1 animate-editorial"
           >
             {activeFeedItem.text}
           </p>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
         </div>
       )}
 
-      {/* 4. Side-by-Side Feature Cards (< رحلة النجوم > & < الأرباح >) */}
+      {/* 4. Side-by-Side Pure White Illustrated Cards (IMG_4532.png #4: "< الأرباح" & "< رحلة النجوم") */}
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
-          onClick={() => onOpenEarnings('star')}
-          className="relative overflow-hidden rounded-[22px] p-4 text-right bg-gradient-to-br from-[#F4FBF8] via-[#E6F6F1] to-[#D4EFE7] border border-teal-200/80 shadow-sm hover:shadow-md active:scale-[0.98] transition-all cursor-pointer group"
+          onClick={() => setSubView('levels')}
+          className="bg-white rounded-2xl p-2.5 shadow-[0_4px_16px_rgba(7,24,43,0.05)] active:scale-[0.98] transition-transform cursor-pointer text-center"
         >
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-teal-800 bg-white/80 border border-teal-200/70 rounded-full px-2 py-0.5 mb-2">
-                <Sparkles className="w-2.5 h-2.5 text-teal-600" />
-                {t('home_star_sub', 'سلم المناصب والرواتب')}
-              </span>
-              <h3 className="font-display text-sm sm:text-base font-extrabold text-[#07182B]">
-                {t('home_star_title', '< رحلة النجوم >')}
-              </h3>
-            </div>
-            <div className="w-10 h-10 rounded-2xl bg-[#0D7A72] text-white flex items-center justify-center shadow-sm shrink-0 group-hover:scale-105 transition-transform">
-              <Award className="w-5 h-5" />
-            </div>
-          </div>
+          <ProfitCardIllustration />
+          <p className="font-display text-[13.5px] font-extrabold text-[#07182B] pt-2 pb-0.5">
+            {'< '}
+            {t('nav_earnings', 'الأرباح')}
+          </p>
         </button>
 
         <button
           type="button"
-          onClick={() => setSubView('levels')}
-          className="relative overflow-hidden rounded-[22px] p-4 text-right bg-gradient-to-br from-[#FDFBF4] via-[#FAF2DC] to-[#F3E5BE] border border-amber-200/85 shadow-sm hover:shadow-md active:scale-[0.98] transition-all cursor-pointer group"
+          onClick={() => onOpenEarnings('star')}
+          className="bg-white rounded-2xl p-2.5 shadow-[0_4px_16px_rgba(7,24,43,0.05)] active:scale-[0.98] transition-transform cursor-pointer text-center"
         >
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-900 bg-white/85 border border-amber-200/80 rounded-full px-2 py-0.5 mb-2">
-                {t('grade_prefix', 'الفئة A')}
-                {user.vipLevel}
-              </span>
-              <h3 className="font-display text-sm sm:text-base font-extrabold text-[#07182B]">
-                {t('home_profit_title', '< الأرباح >')}
-              </h3>
-              <p className="text-[10px] font-bold text-amber-900/80 mt-0.5">
-                {t('home_profit_sub', 'درجات العقود وجدول العوائد')}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-2xl bg-[#07182B] text-[#F5D076] flex items-center justify-center shadow-sm shrink-0 group-hover:scale-105 transition-transform">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-          </div>
+          <StarJourneyCardIllustration />
+          <p className="font-display text-[13.5px] font-extrabold text-[#07182B] pt-2 pb-0.5">
+            {'< رحلة النجوم'}
+          </p>
         </button>
       </div>
 
-      {/* 5. Embedded Corporate Promo Player */}
-      <CorporatePromoPlayer onOpenGrades={() => setSubView('levels')} />
+      {/* 5. Clean Video Frame (IMG_4532.png #5) */}
+      <CorporatePromoPlayer />
 
-      {/* 6. Tri-Sector Live Tourism Showcase (Resorts + Hotels + Landmarks) */}
-      <ServicesCarousel onNavigateTab={onNavigateTab} />
+      {/* 6. Clean Corporate Articles Section (tashare8 pages-index-index n-list) */}
+      <div className="pt-1 space-y-2.5">
+        <h3 className="font-display text-[13.5px] font-extrabold text-[#07182B] px-1">
+          Arona Boost — الشركة واللوائح
+        </h3>
 
-      {/* 7. Official Corporate Information Feed Cards (Tashare-style Stacked Article Cards in Royal Sovereign Palette) */}
-      <div className="space-y-2.5">
         {[
           {
             id: 'about',
@@ -513,8 +414,7 @@ export default function HomeTab({
               'منظومة دولية متخصصة في الترويج الرقمي وتصنيف المنتجعات والفنادق والمعالم السياحية الشريكة حول العالم.'
             ),
             image: assetUrl('/corporate/arona-field-1.jpg?v=4'),
-            fallback: assetUrl('/destinations/dest-4.jpg'),
-            icon: BookOpen
+            fallback: assetUrl('/destinations/dest-4.jpg')
           },
           {
             id: 'job',
@@ -525,8 +425,7 @@ export default function HomeTab({
               'يقوم الموظف بإتمام عقود التقييم اليومية للمعالم والفنادق والمنتجعات مقابل دخل يومي ثابت ومكافآت ترقية.'
             ),
             image: assetUrl('/corporate/arona-field-5.jpg?v=4'),
-            fallback: assetUrl('/destinations/dest-2.jpg'),
-            icon: Briefcase
+            fallback: assetUrl('/destinations/dest-2.jpg')
           },
           {
             id: 'charter',
@@ -537,8 +436,7 @@ export default function HomeTab({
               'المبادئ العشرة المعتمدة لضمان حقوق الموظفين، استرداد ضمان العمل الكامل (365 يوماً)، وشفافية الأرباح.'
             ),
             image: assetUrl('/corporate/arona-field-3.jpg?v=4'),
-            fallback: assetUrl('/destinations/dest-7.jpg'),
-            icon: FileText
+            fallback: assetUrl('/destinations/dest-7.jpg')
           },
           {
             id: 'guidelines',
@@ -549,53 +447,40 @@ export default function HomeTab({
               'ضوابط ساعات التقييم اليومية، مواعيد السحب الفئوي، والمشاركة في فعاليات الظرف الأحمر ومتجر النقاط.'
             ),
             image: assetUrl('/destinations/dest-3.jpg'),
-            fallback: assetUrl('/destinations/dest-1.jpg'),
-            icon: Bell
+            fallback: assetUrl('/destinations/dest-1.jpg')
           }
-        ].map((card) => {
-          const IconComp = card.icon;
-          return (
-            <button
-              key={card.id}
-              type="button"
-              onClick={() => onOpenCharter && onOpenCharter(card.tab)}
-              className="w-full exec-card rounded-[20px] p-3 flex items-center gap-3 text-right hover:border-[#0D7A72]/40 active:scale-[0.99] transition-all cursor-pointer group"
-            >
-              <div className="relative w-20 h-16 rounded-2xl overflow-hidden bg-[#07182B] shrink-0">
-                <img
-                  src={card.image}
-                  alt={card.title}
-                  loading="lazy"
-                  onError={(e) => {
-                    if (card.fallback && e.currentTarget.src !== card.fallback) {
-                      e.currentTarget.src = card.fallback;
-                    }
-                  }}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-[#07182B]/25" />
-                <div className="absolute bottom-1 right-1 w-5 h-5 rounded-md bg-[#07182B]/85 text-[#F5D076] flex items-center justify-center">
-                  <IconComp className="w-3 h-3" />
-                </div>
-              </div>
+        ].map((card) => (
+          <button
+            key={card.id}
+            type="button"
+            onClick={() => onOpenCharter && onOpenCharter(card.tab)}
+            className="w-full bg-white rounded-2xl p-3.5 shadow-[0_3px_12px_rgba(7,24,43,0.04)] flex items-center justify-between gap-3 text-right active:scale-[0.99] transition-transform cursor-pointer"
+          >
+            <div className="flex-1 min-w-0 space-y-1">
+              <h4 className="font-display text-[13px] font-extrabold text-[#07182B] truncate">
+                {card.title}
+              </h4>
+              <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
+                {card.subtitle}
+              </p>
+            </div>
 
-              <div className="flex-1 min-w-0 space-y-1">
-                <h4 className="font-display text-xs font-extrabold text-[#07182B] truncate">
-                  {card.title}
-                </h4>
-                <p className="text-[10.5px] text-slate-500 leading-relaxed line-clamp-2">
-                  {card.subtitle}
-                </p>
-              </div>
-
-              <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-[#07182B] shrink-0" />
-            </button>
-          );
-        })}
+            <div className="w-24 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0">
+              <img
+                src={card.image}
+                alt={card.title}
+                loading="lazy"
+                onError={(e) => {
+                  if (card.fallback && e.currentTarget.src !== card.fallback) {
+                    e.currentTarget.src = card.fallback;
+                  }
+                }}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </button>
+        ))}
       </div>
-
-      {/* Optional PWA Install Prompt */}
-      <InstallAppBanner pwaPrompt={pwaPrompt} onTriggerPwaInstall={onTriggerPwaInstall} />
     </div>
   );
 }

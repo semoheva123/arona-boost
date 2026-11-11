@@ -1,17 +1,7 @@
 import React, { useState } from 'react';
-import {
-  Eye,
-  EyeOff,
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  Crown,
-  Wallet,
-  Briefcase,
-  ShieldCheck,
-  RefreshCw
-} from 'lucide-react';
+import { Eye, EyeOff, Wallet, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { formatUsdt } from '../api';
-import { useI18n, REFERENCE_CURRENCIES } from '../i18n';
+import { useI18n } from '../i18n';
 
 export default function BalanceCard({
   user,
@@ -20,174 +10,98 @@ export default function BalanceCard({
   showActions = true
 }) {
   const [hidden, setHidden] = useState(false);
-  const { t, currency, setCurrency, formatReferenceEquivalent } = useI18n();
+  const { t } = useI18n();
 
   const maskOrFormat = (val) => (hidden ? '••••••' : formatUsdt(val));
-  const jobTitle = user?.jobTitle || ((user?.vipLevel ?? 0) > 0 ? 'موظف رسمي' : 'موظف متدرب');
-
-  const cycleCurrency = () => {
-    const idx = REFERENCE_CURRENCIES.findIndex((c) => c.code === currency);
-    const next = REFERENCE_CURRENCIES[(idx + 1) % REFERENCE_CURRENCIES.length];
-    setCurrency(next.code);
-  };
-
-  const localEquiv = !hidden ? formatReferenceEquivalent(user?.balance || 0) : null;
 
   return (
-    <div className="space-y-3">
-      {/* Single Unified Dignified Sovereign Balance Card */}
-      <div className="balance-card-surface relative overflow-hidden rounded-[28px] p-5 text-white border border-[#F5D076]/22">
-        {/* Bank-grade geometric guilloché filigree */}
-        <div className="pointer-events-none absolute inset-0 exec-filigree opacity-75" />
+    <div
+      className="relative overflow-hidden rounded-2xl p-4 text-white shadow-[0_10px_28px_-8px_rgba(7,24,43,0.28)]"
+      style={{
+        background: 'linear-gradient(128deg, #07182B 0%, #0B3650 52%, #0D7A72 100%)'
+      }}
+    >
+      {/* Subtle soft glow like IMG_4503.png wallet card */}
+      <div
+        className="pointer-events-none absolute -top-12 -left-10 w-36 h-36 rounded-full opacity-25 blur-2xl"
+        style={{ background: 'radial-gradient(circle, #F5D076 0%, transparent 70%)' }}
+      />
 
-        {/* Ambient Champagne Gold & Emerald Glows */}
-        <div
-          className="pointer-events-none absolute -top-16 -right-14 h-44 w-44 rounded-full blur-3xl opacity-25"
-          style={{ background: 'radial-gradient(circle, #F5D076 0%, transparent 70%)' }}
-        />
-        <div
-          className="pointer-events-none absolute -bottom-20 -left-12 h-48 w-48 rounded-full blur-3xl opacity-25"
-          style={{ background: 'radial-gradient(circle, #14B8A6 0%, transparent 70%)' }}
-        />
-
-        {/* Card Top Institutional Row */}
-        <div className="relative z-10 flex items-center justify-between gap-2 mb-4">
-          <div className="inline-flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-white/10 border border-[#F5D076]/30 backdrop-blur-xs flex items-center justify-center shrink-0 shadow-xs">
-              <Wallet className="w-4 h-4 text-[#F5D076]" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1">
-                <p className="text-xs font-extrabold text-white tracking-tight leading-none">
-                  {t('wallet_central_title', 'المحفظة المركزية المعتمدة')}
-                </p>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-              </div>
-              <p className="text-[10px] text-slate-300 mt-1 truncate">
-                {t('wallet_account_no', 'حساب رقم')} #{1000 + (user?.id || 1)} •{' '}
-                {t('wallet_instant_usdt', 'تسوية فورية USDT')}
-              </p>
-            </div>
+      {/* Top Row: Wallet Icon + محفظة الدخل + Eye Toggle */}
+      <div className="relative z-10 flex items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center">
+            <Wallet className="w-4 h-4 text-[#F5D076]" />
           </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/18 px-2.5 py-1 text-[10px] font-bold text-teal-100">
-              <Briefcase className="w-3 h-3 text-[#F5D076]" />
-              <span>{jobTitle}</span>
-            </span>
-            <span className="gold-crest-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10.5px] font-extrabold">
-              <Crown className="w-3 h-3 text-[#061527]" />
-              <span>
-                {t('grade_prefix', 'الفئة A')}
-                {user?.vipLevel ?? 0}
-              </span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setHidden((h) => !h)}
-              className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/18 border border-white/12 flex items-center justify-center text-white/85 transition-colors cursor-pointer"
-              aria-label="إظهار أو إخفاء الرصيد"
-            >
-              {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
+          <span className="text-[13px] font-bold text-white/95">
+            {t('wallet_income_short', 'محفظة الدخل')} :
+          </span>
         </div>
 
-        {/* Center Main Metric: Income Wallet (Withdrawable Current Balance) + Recharge Wallet */}
-        <div className="relative z-10 mb-4 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold text-teal-100/90 mb-1">
-              {t('wallet_income_label', 'محفظة الدخل (الرصيد القابل للسحب)')}
-            </p>
-            <div className="flex items-baseline gap-2">
-              <span className="ltr-num tabular-nums font-display text-[32px] sm:text-[35px] font-extrabold tracking-tight text-white leading-none">
-                ${maskOrFormat(user?.balance)}
-              </span>
-              <span className="rounded-lg bg-[#F5D076]/18 border border-[#F5D076]/35 px-2 py-0.5 text-[10.5px] font-extrabold tracking-wider text-[#F5D076]">
-                USDT
-              </span>
-            </div>
+        <button
+          type="button"
+          onClick={() => setHidden((h) => !h)}
+          aria-label="إظهار أو إخفاء الرصيد"
+          className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/85 transition-colors cursor-pointer"
+        >
+          {hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+        </button>
+      </div>
 
-            {/* Subtle Optional Local Reference Currency Converter Pill */}
-            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                onClick={cycleCurrency}
-                title="تغيير العملة المرجعية التقريبية"
-                className="inline-flex items-center gap-1 rounded-lg bg-white/10 hover:bg-white/16 border border-white/15 px-2 py-0.5 text-[10px] font-bold text-[#F5D076] transition-colors cursor-pointer"
-              >
-                <RefreshCw className="w-2.5 h-2.5" />
-                <span className="ltr-num">{currency}</span>
-              </button>
-              {localEquiv && (
-                <span className="ltr-num tabular-nums text-[10.5px] font-bold text-teal-100/90">
-                  {localEquiv}
-                </span>
-              )}
-            </div>
-          </div>
+      {/* Main Balance Row (exact IMG_4503.png typography) */}
+      <div className="relative z-10 mt-2 mb-3 flex items-baseline gap-2">
+        <span className="text-xs font-bold text-[#F5D076]">(USDT)</span>
+        <span className="ltr-num tabular-nums font-display text-[28px] font-extrabold tracking-tight text-white leading-none">
+          {maskOrFormat(user?.balance)}
+        </span>
+      </div>
 
-          {/* Secondary Wallet Pill: Recharge Balance */}
-          <div className="rounded-2xl bg-slate-950/35 border border-white/15 backdrop-blur-xs px-3 py-2 text-left shrink-0">
-            <p className="text-[10px] font-medium text-slate-300">
-              {t('wallet_recharge_label', 'رصيد الشحن')}
-            </p>
-            <p className="ltr-num tabular-nums text-xs font-extrabold text-emerald-300 mt-0.5">
-              ${maskOrFormat(user?.rechargeBalance ?? 0)} USDT
-            </p>
-          </div>
+      {/* Recharge Balance + Total Deposits / Withdrawals Row */}
+      <div className="relative z-10 pt-2.5 border-t border-white/15 flex flex-wrap items-center justify-between gap-y-1.5 gap-x-3 text-[11.5px]">
+        <div className="flex items-center gap-1.5">
+          <span className="text-white/80 font-semibold">
+            {t('wallet_recharge_label', 'رصيد الشحن')} :
+          </span>
+          <span className="ltr-num tabular-nums font-extrabold text-[#F5D076]">
+            (USDT) {maskOrFormat(user?.rechargeBalance ?? 0)}
+          </span>
         </div>
 
-        {/* Unified Bottom Sub-Metrics Panel: Total Deposits & Total Withdrawals */}
-        <div className="relative z-10 grid grid-cols-2 rounded-2xl bg-slate-950/32 backdrop-blur-xs border border-white/14 p-3.5">
-          <div className="flex items-center gap-2.5 pl-3 border-l border-white/14">
-            <div className="w-8 h-8 rounded-xl bg-emerald-400/18 border border-emerald-300/25 flex items-center justify-center shrink-0">
-              <ArrowDownToLine className="w-4 h-4 text-emerald-300" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10.5px] font-medium text-slate-300 truncate">
-                {t('wallet_total_deposits', 'إجمالي الإيداعات')}
-              </p>
-              <p className="ltr-num tabular-nums text-sm font-extrabold text-white mt-0.5 truncate">
-                ${maskOrFormat(user?.totalDeposits)}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 pr-3">
-            <div className="w-8 h-8 rounded-xl bg-[#F5D076]/18 border border-[#F5D076]/30 flex items-center justify-center shrink-0">
-              <ArrowUpFromLine className="w-4 h-4 text-[#F5D076]" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10.5px] font-medium text-slate-300 truncate">
-                {t('wallet_total_withdrawals', 'إجمالي المسحوبات')}
-              </p>
-              <p className="ltr-num tabular-nums text-sm font-extrabold text-white mt-0.5 truncate">
-                ${maskOrFormat(user?.totalWithdrawals)}
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center gap-3 text-[11px] text-white/85">
+          <span>
+            الإيداعات:{' '}
+            <strong className="ltr-num tabular-nums text-white">
+              ${maskOrFormat(user?.totalDeposits)}
+            </strong>
+          </span>
+          <span className="text-white/30">|</span>
+          <span>
+            المسحوبات:{' '}
+            <strong className="ltr-num tabular-nums text-white">
+              ${maskOrFormat(user?.totalWithdrawals)}
+            </strong>
+          </span>
         </div>
       </div>
 
-      {/* Side-by-Side Sovereign Deposit & Withdraw Buttons */}
+      {/* Clean Side-by-Side Deposit & Withdraw Buttons inside the Same Unified Card */}
       {showActions && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="relative z-10 grid grid-cols-2 gap-2.5 mt-3.5">
           <button
             type="button"
-            onClick={() => onOpenDeposit()}
-            className="exec-primary-btn flex items-center justify-center gap-2 rounded-2xl active:scale-[0.98] py-3.5 px-4 text-sm font-extrabold text-white transition-all cursor-pointer"
+            onClick={() => onOpenDeposit?.()}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#F5D076] hover:bg-[#f7da8d] text-[#07182B] py-2.5 px-3 text-xs font-extrabold transition-colors cursor-pointer shadow-xs"
           >
-            <ArrowDownToLine className="w-4 h-4 text-[#F5D076]" />
+            <ArrowDownToLine className="w-3.5 h-3.5" />
             <span>{t('btn_deposit', 'إيداع رصيد')}</span>
           </button>
 
           <button
             type="button"
-            onClick={() => onOpenWithdraw()}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-white hover:bg-slate-50 active:scale-[0.98] py-3.5 px-4 text-sm font-extrabold text-[#081E36] border border-slate-300/90 shadow-xs transition-all cursor-pointer"
+            onClick={() => onOpenWithdraw?.()}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-white/14 hover:bg-white/22 border border-white/25 text-white py-2.5 px-3 text-xs font-extrabold transition-colors cursor-pointer"
           >
-            <ArrowUpFromLine className="w-4 h-4 text-[#0D7A72]" />
+            <ArrowUpFromLine className="w-3.5 h-3.5 text-[#F5D076]" />
             <span>{t('btn_withdraw', 'سحب الأرباح')}</span>
           </button>
         </div>

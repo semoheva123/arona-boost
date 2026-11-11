@@ -310,10 +310,12 @@ export function useI18n() {
   return ctx;
 }
 
-export function LanguageSwitcherPill({ compact = true }) {
+export function LanguageSwitcherPill({ compact = true, variant = 'clean' }) {
   const { lang, setLang } = useI18n();
   const [open, setOpen] = useState(false);
   const current = SUPPORTED_LANGUAGES.find((l) => l.code === lang) || SUPPORTED_LANGUAGES[0];
+
+  const isClean = variant === 'clean';
 
   return (
     <div className="relative">
@@ -321,16 +323,26 @@ export function LanguageSwitcherPill({ compact = true }) {
         type="button"
         onClick={() => setOpen((o) => !o)}
         title="اللغة / Language"
-        className="h-8 px-2 rounded-xl bg-white/10 hover:bg-white/18 border border-white/15 text-slate-100 inline-flex items-center gap-1 text-[10.5px] font-extrabold transition-colors cursor-pointer"
+        className={
+          isClean
+            ? 'w-8 h-8 rounded-full bg-white hover:bg-slate-50 border border-slate-200/90 shadow-2xs inline-flex items-center justify-center text-[17px] leading-none transition-colors cursor-pointer'
+            : 'h-8 px-2 rounded-xl bg-white/10 hover:bg-white/18 border border-white/15 text-slate-100 inline-flex items-center gap-1 text-[10.5px] font-extrabold transition-colors cursor-pointer'
+        }
       >
-        <Globe2 className="w-3.5 h-3.5 text-[#F5D076]" />
-        <span className="ltr-num">{compact ? current.short : current.name}</span>
+        {isClean ? (
+          <span aria-hidden="true">{current.flag}</span>
+        ) : (
+          <>
+            <Globe2 className="w-3.5 h-3.5 text-[#F5D076]" />
+            <span className="ltr-num">{compact ? current.short : current.name}</span>
+          </>
+        )}
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-10 left-0 z-50 w-40 rounded-2xl bg-[#07192E] border border-[#F5D076]/35 shadow-2xl p-1.5 space-y-0.5 text-white">
+          <div className="absolute top-10 left-0 z-50 w-40 rounded-2xl bg-white border border-slate-200 shadow-xl p-1.5 space-y-0.5 text-slate-800">
             {SUPPORTED_LANGUAGES.map((item) => {
               const active = item.code === lang;
               return (
@@ -343,15 +355,15 @@ export function LanguageSwitcherPill({ compact = true }) {
                   }}
                   className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                     active
-                      ? 'bg-[#F5D076]/20 text-[#F5D076] border border-[#F5D076]/35'
-                      : 'text-slate-200 hover:bg-white/10'
+                      ? 'bg-[#0D7A72]/10 text-[#0D7A72]'
+                      : 'text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <span className="inline-flex items-center gap-1.5">
                     <span>{item.flag}</span>
                     <span>{item.name}</span>
                   </span>
-                  {active && <Check className="w-3.5 h-3.5 text-[#F5D076]" />}
+                  {active && <Check className="w-3.5 h-3.5 text-[#0D7A72]" />}
                 </button>
               );
             })}

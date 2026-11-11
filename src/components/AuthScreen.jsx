@@ -226,7 +226,7 @@ export default function AuthScreen({ onAuthSuccess, whatsappNumber, showToast })
           </div>
 
           <div className="flex items-center gap-1.5">
-            <LanguageSwitcherPill compact={true} />
+            <LanguageSwitcherPill compact={true} variant="dark" />
             <button
               type="button"
               onClick={() => setCharterOpen(true)}

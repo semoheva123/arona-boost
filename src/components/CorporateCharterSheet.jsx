@@ -6,6 +6,7 @@ import {
   Award,
   Globe2,
   ArrowLeft,
+  ArrowRight,
   Briefcase,
   BookOpen,
   BellRing,
@@ -192,48 +193,39 @@ export default function CorporateCharterSheet({
     }
   };
 
+  const sectionTitles = {
+    about: 'نبذة عن شركة Arona Boost',
+    certificate: 'شهادة الاعتماد الرسمية',
+    job: 'وصف وظيفة الموظف الجزئي عبر الإنترنت',
+    charter: 'بيان شركة Arona Boost',
+    guidelines: 'إشعار الموظفين وإرشادات العمل',
+    map: 'خريطة العقود والتغطية'
+  };
+
   return (
     <ModalPortal>
-      <div
-        className="fixed inset-0 z-[95] bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center"
-        onClick={onClose}
-      >
-        <div
-          className="w-full max-w-[430px] max-h-[92dvh] flex flex-col rounded-t-[30px] sm:rounded-[30px] bg-[#F4F7FB] shadow-2xl animate-sheet overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Royal Sovereign Header */}
-          <div
-            className="px-5 py-4 text-white flex items-center justify-between shrink-0 border-b border-[#F5D076]/25"
-            style={{
-              background: 'linear-gradient(145deg, #051322 0%, #0A2542 60%, #0D6E68 100%)'
-            }}
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-white/12 border border-[#F5D076]/35 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-[#F5D076]" />
-              </div>
-              <div>
-                <h3 className="font-display text-sm font-extrabold text-white">
-                  الوثائق والشهادات الرسمية — Arona Boost
-                </h3>
-                <p className="text-[10.5px] text-teal-100/90">
-                  نبذة الشركة • شهادة الاعتماد • وصف الوظيفة • بيان الشركة
-                </p>
-              </div>
-            </div>
-
+      <div className="fixed inset-0 z-[95] bg-[#EEF4F8] flex justify-center overflow-y-auto animate-tab">
+        <div className="w-full max-w-[430px] min-h-dvh flex flex-col">
+          {/* Clean Top Bar (EXACT IMG_4505.png & IMG_4506.png: Back Arrow | Centered Title) */}
+          <header className="sticky top-0 z-10 bg-white border-b border-slate-200/70 px-4 py-3 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/12 hover:bg-white/22 flex items-center justify-center text-white cursor-pointer"
+              aria-label="رجوع"
+              className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#07182B] shrink-0 cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              <ArrowRight className="w-5 h-5" />
             </button>
-          </div>
 
-          {/* 6-Pill Document Switcher */}
-          <div className="px-3.5 pt-3 pb-1 shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <h3 className="font-display text-[14px] font-extrabold text-[#07182B] text-center truncate">
+              {sectionTitles[subTab] || 'بيان شركة Arona Boost'}
+            </h3>
+
+            <div className="w-8 shrink-0" />
+          </header>
+
+          {/* Clean Document Switcher */}
+          <div className="bg-white/80 backdrop-blur-xs border-b border-slate-200/50 px-3.5 py-2.5 shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {[
               { id: 'about', label: 'نبذة عن الشركة', Icon: BookOpen },
               { id: 'certificate', label: 'شهادة الاعتماد', Icon: FileBadge },
@@ -248,13 +240,13 @@ export default function CorporateCharterSheet({
                   key={id}
                   type="button"
                   onClick={() => setSubTab(id)}
-                  className={`shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-extrabold border transition-all cursor-pointer ${
+                  className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-extrabold transition-colors cursor-pointer ${
                     active
-                      ? 'bg-[#07182B] text-[#F5D076] border-[#07182B]'
-                      : 'bg-white text-slate-600 border-slate-200/90'
+                      ? 'bg-[#0D7A72] text-white'
+                      : 'bg-[#EEF4F8] text-slate-600 hover:text-[#07182B]'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="w-3 h-3" />
                   <span>{label}</span>
                 </button>
               );
@@ -262,7 +254,7 @@ export default function CorporateCharterSheet({
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+          <div className="flex-1 p-3.5 space-y-3.5 pb-10">
             {subTab === 'about' && (
               <div className="space-y-3">
                 <div className="exec-royal-surface rounded-[24px] p-4 text-white border border-[#F5D076]/30 space-y-2">

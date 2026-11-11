@@ -3,6 +3,7 @@ import React from 'react';
 export default function BrandLogo({
   size = 'md',
   showTagline = false,
+  compact = false,
   variant = 'dark' // 'dark' (dark text on light bg) | 'light' (white/gold text on dark bg)
 }) {
   const dims =
@@ -11,7 +12,7 @@ export default function BrandLogo({
       : size === 'lg'
       ? 'w-14 h-14 rounded-2xl'
       : size === 'sm'
-      ? 'w-9 h-9 rounded-xl'
+      ? 'w-8 h-8 rounded-xl'
       : 'w-10 h-10 rounded-xl';
 
   const textSize =
@@ -20,18 +21,18 @@ export default function BrandLogo({
       : size === 'lg'
       ? 'text-2xl'
       : size === 'sm'
-      ? 'text-[15.5px]'
+      ? 'text-[17px]'
       : 'text-lg';
 
   const isLight = variant === 'light';
 
   return (
-    <div className="inline-flex items-center gap-2.5 select-none">
+    <div className="inline-flex items-center gap-2 select-none">
       <div
         className={`${dims} relative flex items-center justify-center overflow-hidden shrink-0 ${
           isLight
             ? 'border border-[#F5D076]/45 shadow-[0_8px_22px_rgba(0,0,0,0.34)]'
-            : 'shadow-sm border border-slate-900/12'
+            : 'shadow-xs border border-slate-900/10'
         }`}
         style={{
           background: isLight
@@ -39,7 +40,6 @@ export default function BrandLogo({
             : 'linear-gradient(135deg, #071A2F 0%, #0B4A41 58%, #0D7A6E 100%)'
         }}
       >
-        {/* Precision double-bezel inner gold ring */}
         <div className="pointer-events-none absolute inset-[2px] rounded-[inherit] border border-[#F5D076]/22" />
         <svg viewBox="0 0 64 64" className="w-7/12 h-7/12 relative z-10" fill="none">
           <path
@@ -61,22 +61,24 @@ export default function BrandLogo({
             <span className={isLight ? 'text-[#F5D076]' : 'text-[#0D7A72]'}>Boost</span>
           </span>
         </div>
-        {showTagline ? (
-          <span
-            className={`text-[11px] font-medium ${
-              isLight ? 'text-teal-100/85' : 'text-slate-500'
-            }`}
-          >
-            المجموعة الدولية للتصنيف والترويج السياحي
-          </span>
-        ) : (
-          <span
-            className={`text-[9px] font-bold tracking-wide ${
-              isLight ? 'text-[#F5D076]/80' : 'text-slate-400'
-            }`}
-          >
-            التصنيف السياحي المعتمد
-          </span>
+        {!compact && (
+          showTagline ? (
+            <span
+              className={`text-[11px] font-medium ${
+                isLight ? 'text-teal-100/85' : 'text-slate-500'
+              }`}
+            >
+              المجموعة الدولية للتصنيف والترويج السياحي
+            </span>
+          ) : (
+            <span
+              className={`text-[9px] font-bold tracking-wide ${
+                isLight ? 'text-[#F5D076]/80' : 'text-slate-400'
+              }`}
+            >
+              التصنيف السياحي المعتمد
+            </span>
+          )
         )}
       </div>
     </div>

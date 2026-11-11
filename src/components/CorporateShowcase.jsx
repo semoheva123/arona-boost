@@ -105,12 +105,12 @@ export default function CorporateShowcase() {
 
   return (
     <>
-      <section className="rounded-[22px] overflow-hidden bg-white border border-slate-200/90 shadow-[0_12px_30px_-14px_rgba(7,24,43,0.16)]">
-        {/* Clean Unobstructed Top Hero Photo Slider (matching IMG_4532.png proportions) */}
+      <section className="rounded-2xl overflow-hidden bg-white shadow-[0_4px_16px_rgba(7,24,43,0.05)]">
+        {/* Clean Unobstructed Top Photo Slider (matching IMG_4532.png & IMG_4501.png) */}
         <div
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-950"
+          className="relative h-44 sm:h-48 w-full overflow-hidden bg-slate-200"
         >
           <img
             key={`${active.id}-${cycleKey}`}
@@ -127,60 +127,57 @@ export default function CorporateShowcase() {
             className="w-full h-full object-cover object-center animate-photo-fade cursor-pointer"
           />
 
-          {/* Minimal Bottom Indicator Dots (like IMG_4532.png) */}
+          {/* Clean White Pill Indicator Dots at Bottom (exact IMG_4532.png style) */}
           <div className="absolute bottom-2.5 inset-x-0 flex items-center justify-center gap-1.5 pointer-events-auto">
-            <div className="flex items-center gap-1.5 rounded-full bg-black/35 backdrop-blur-xs px-2.5 py-1">
-              {CORPORATE_REPORTS.map((item, idx) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => selectSlide(idx)}
-                  aria-label={item.workplace}
-                  className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                    idx === sceneIdx ? 'w-5 bg-white' : 'w-1.5 bg-white/55'
-                  }`}
-                />
-              ))}
-            </div>
+            {CORPORATE_REPORTS.map((item, idx) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => selectSlide(idx)}
+                aria-label={item.workplace}
+                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer shadow-2xs ${
+                  idx === sceneIdx ? 'w-5 bg-white' : 'w-1.5 bg-white/60'
+                }`}
+              />
+            ))}
           </div>
         </div>
 
-        {/* Live 10-Second Synchronized Progress Hairline */}
-        <div className="h-[2.5px] w-full bg-slate-100 overflow-hidden">
+        {/* Hairline 10-Second Synchronized Progress */}
+        <div className="h-[2px] w-full bg-slate-100 overflow-hidden">
           {!lightboxOpen && (
             <div
               key={`bar-${sceneIdx}-${cycleKey}`}
-              className="h-full w-full bg-gradient-to-l from-[#07182B] via-[#0D7A72] to-[#D4A63E] animate-progress-10s"
+              className="h-full w-full bg-[#0D7A72] animate-progress-10s"
             />
           )}
         </div>
 
-        {/* Compact Single-Strip Footer: التقارير التنفيذية والمجالس + Workplace + Essential 1-Line Summary */}
-        <div className="px-3.5 py-2.5 bg-white space-y-1">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-display text-[11.5px] font-extrabold text-[#07182B]">
-              {t('corp_reports_title', 'التقارير التنفيذية والمجالس')}
-            </span>
-
-            <span
-              key={`loc-${active.id}`}
-              className="inline-flex items-center gap-1 rounded-lg bg-[#07182B] text-[#F5D076] px-2 py-0.5 text-[10.5px] font-extrabold animate-editorial"
+        {/* Ultra-Compact Single Strip: التقارير التنفيذية والمجالس + Workplace + 1-line Summary */}
+        <div className="px-3 py-2 bg-white flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p
+              key={`sum-${active.id}`}
+              className="text-[11px] font-semibold text-slate-600 truncate animate-editorial"
             >
-              <MapPin className="w-3 h-3 text-[#F5D076] shrink-0" />
-              <span>{active.workplace}</span>
-            </span>
+              <span className="font-extrabold text-[#07182B] ml-1.5">
+                {t('corp_reports_title', 'التقارير التنفيذية والمجالس')}:
+              </span>
+              {active.summary}
+            </p>
           </div>
 
-          <p
-            key={`sum-${active.id}`}
-            className="text-[11px] font-semibold text-slate-600 truncate animate-editorial"
+          <span
+            key={`loc-${active.id}`}
+            className="inline-flex items-center gap-1 rounded-full bg-[#EEF4F8] text-[#07182B] px-2 py-0.5 text-[10px] font-extrabold shrink-0 animate-editorial"
           >
-            {active.summary}
-          </p>
+            <MapPin className="w-2.5 h-2.5 text-[#0D7A72] shrink-0" />
+            <span>{active.workplace}</span>
+          </span>
         </div>
       </section>
 
-      {/* Tap-to-Zoom Modal */}
+      {/* Tap-to-Zoom Lightbox */}
       {lightboxOpen && (
         <ModalPortal>
           <div
@@ -189,7 +186,7 @@ export default function CorporateShowcase() {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg rounded-[24px] overflow-hidden bg-white border border-slate-200 shadow-2xl"
+              className="w-full max-w-lg rounded-2xl overflow-hidden bg-white shadow-2xl"
             >
               <div className="bg-[#07182B] text-white px-4 py-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
